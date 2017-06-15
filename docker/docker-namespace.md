@@ -26,11 +26,11 @@ Linux Namespace 是kernel 的一个功能，它可以隔离一系列系统的资
 Namesapce 的API主要使用三个系统调用
 
 * `clone()`
-  - 创建新进程。根据系统调用参数来判断哪种类型的namespace被创建，而且它们的子进程也会被包含到namespace中
+  * 创建新进程。根据系统调用参数来判断哪种类型的namespace被创建，而且它们的子进程也会被包含到namespace中
 * `unshare()`
-  - 将进程移出某个namespace
+  * 将进程移出某个namespace
 * `setns()`
-  - 将进程加入到namesp中
+  * 将进程加入到namesp中
 
 ## UTS Namespace {#3}
 
@@ -69,7 +69,7 @@ func main() {
 
 ```
 |-sshd(19820)---bash(19839)---go(19901)-+-main(19912)-+-sh(19915)---
-    pstree(19916) 
+    pstree(19916)
 ```
 
 然后我们输出一下当前的 PID
@@ -95,28 +95,17 @@ uts:[4026532193]
 在这个sh环境内执行
 
 ```
-修改hostname 为
-bird然后打印出来 
-
-# hostname -
-b 
-bird
-
+修改hostname 为bird然后打印出来 
+# hostname -b bird
 # hostname
-
-bird 
+bird  
 ```
 
 我们另外启动一个shell在宿主机上运行一下hostname看一下效果
 
 ```
-root
-@iZ254rt8xf1Z
-:~
-# hostname
-
+root@iZ254rt8xf1Z:~# hostname
 iZ254rt8xf1Z
-
 ```
 
 可以看到外部的 hostname 并没有被内部的修改所影响，由此就了解了UTS Namespace的作用。
@@ -131,52 +120,25 @@ IPC Namespace 是用来隔离 System V IPC 和POSIX message queues.每一个IPC 
 package main
 
 import (
-    
-"log"
-"os"
-"os/exec"
-"syscall"
-
+    "log"
+    "os"
+    "os/exec"
+    "syscall"
 )
 
 func main() {
-    
-cmd
- := exec.Command(
-"sh"
-)
-
-cmd
-.
-SysProcAttr = 
-&
-syscall.SysProcAttr{
-
+    cmd := exec.Command("sh")
+    cmd.SysProcAttr = &syscall.SysProcAttr{
         Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC,
     }
-    
-cmd
-.
-Stdin = os.Stdin
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
 
-cmd
-.
-Stdout = os.Stdout
-
-cmd
-.
-Stderr = os.Stderr
-
-
-    if err := 
-cmd
-.
-Run(); err != nil {
-
+    if err := cmd.Run(); err != nil {
         log.Fatal(err)
     }
 }
-
 ```
 
 可以看到我们仅仅增加`syscall.CLONE_NEWIPC`代表我们希望创建IPC Namespace。下面我们需要打开两个shell 来演示隔离的效果。
@@ -185,56 +147,30 @@ Run(); err != nil {
 
 ```
 查看现有的ipc Message Queues
-root
-@iZ254rt8xf1Z
-:~
-# ipcs -q
-
+root@iZ254rt8xf1Z:~# ipcs -q
 
 ------ Message Queues --------
 key        msqid      owner      perms      used-bytes   messages
 
 下面我们创建一个message queue
-root
-@iZ254rt8xf1Z
-:~
-# ipcmk -Q
-
-Message queue 
-id:
-0
-
+root@iZ254rt8xf1Z:~# ipcmk -Q
+Message queue id: 0
 然后再查看一下 
-root
-@iZ254rt8xf1Z
-:~
-# ipcs -q
-
+root@iZ254rt8xf1Z:~# ipcs -q
 
 ------ Message Queues --------
 key        msqid      owner      perms      used-bytes   messages
-
-0x5e8f3f1e
-0
-          root       
-644
-0
-0
+0x5e8f3f1e 0          root       644        0            0
 ```
 
 这里我们发现是可以看到一个queue了。下面我们使用另外一个shell去运行我们的程序。
 
 ```
-root
-@iZ254rt8xf1Z
-:~/gocode/src/book
-# go run main.go
+root@iZ254rt8xf1Z:~/gocode/src/book# go run main.go
 # ipcs -q
-
 
 ------ Message Queues --------
 key        msqid      owner      perms      used-bytes   messages
-
 ```
 
 通过这里我们可以发现，在新创建的Namespace里面，我们看不到宿主机上已经创建的message queue，说明我们的 IPC Namespace 创建成功，IPC 已经被隔离。
@@ -249,111 +185,45 @@ PID namespace是用来隔离进程 id。同样的一个进程在不同的 PID Na
 package main
 
 import (
-    
-"log"
-"os"
-"os/exec"
-"syscall"
-
+    "log"
+    "os"
+    "os/exec"
+    "syscall"
 )
 
 func main() {
-    
-cmd
- := exec.Command(
-"sh"
-)
-
-cmd
-.
-SysProcAttr = 
-&
-syscall.SysProcAttr{
-
+    cmd := exec.Command("sh")
+    cmd.SysProcAttr = &syscall.SysProcAttr{
         Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC | syscall.CLONE_NEWPID,
     }
-    
-cmd
-.
-Stdin = os.Stdin
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
 
-cmd
-.
-Stdout = os.Stdout
-
-cmd
-.
-Stderr = os.Stderr
-
-
-    if err := 
-cmd
-.
-Run(); err != nil {
-
+    if err := cmd.Run(); err != nil {
         log.Fatal(err)
     }
 }
-
 ```
 
 我们需要打开两个 shell，首先我们在宿主机上看一下进程树，找一下我们的进程的真实 PID
 
-    root
-    @iZ254rt8xf1Z:~#
-     pstree -pl
-     |
-    -sshd(894)-+-sshd(9455)---bash(9475)---bash(19619)
-
-    |
-    |
-    -sshd(19715)---bash(19734)
-
-    |
-    |
-    -sshd(19853)---bash(19872)---go(20179)-+-main(20190)-+-sh(20193)
-
-    |
-    |
-    |
-    |
-    -{main}(20191)
-
-    |
-    |
-    |
-                 `-{main}(20192)
-
-    |
-    |
-    |
-    -{go}(20180)
-
-    |
-    |
-    |
-    -{go}(20181)
-
-    |
-    |
-    |
-    -{go}(20182)
-
-    |
-    |
-                                           `-{go}(20186)
-
-    |
-               `-sshd(20124)---bash(20144)---pstree(20196)
-
+    root@iZ254rt8xf1Z:~# pstree -pl
+     |-sshd(894)-+-sshd(9455)---bash(9475)---bash(19619)
+        |           |-sshd(19715)---bash(19734)
+        |           |-sshd(19853)---bash(19872)---go(20179)-+-main(20190)-+-sh(20193)
+        |           |                                       |             |-{main}(20191)
+        |           |                                       |             `-{main}(20192)
+        |           |                                       |-{go}(20180)
+        |           |                                       |-{go}(20181)
+        |           |                                       |-{go}(20182)
+        |           |                                       `-{go}(20186)
+        |           `-sshd(20124)---bash(20144)---pstree(20196)
 
 可以看到，我们的go main 函数运行的pid为 20190。下面我们打开另外一个 shell 运行一下我们的代码
 
 ```
-root
-@iZ254rt8xf1Z
-:~/gocode/src/book
-# go run main.go
+root@iZ254rt8xf1Z:~/gocode/src/book# go run main.go
 # echo $$
 1
 ```
@@ -374,191 +244,43 @@ mount namespace是Linux 第一个实现的namesapce 类型，因此它的系统�
 package main
 
 import (
-    
-"log"
-"os"
-"os/exec"
-"syscall"
-
+    "log"
+    "os"
+    "os/exec"
+    "syscall"
 )
 
 func main() {
-    
-cmd
- := exec.Command(
-"sh"
-)
-
-cmd
-.
-SysProcAttr = 
-&
-syscall.SysProcAttr{
-
+    cmd := exec.Command("sh")
+    cmd.SysProcAttr = &syscall.SysProcAttr{
         Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
     }
-    
-cmd
-.
-Stdin = os.Stdin
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
 
-cmd
-.
-Stdout = os.Stdout
-
-cmd
-.
-Stderr = os.Stderr
-
-
-    if err := 
-cmd
-.
-Run(); err != nil {
-
+    if err := cmd.Run(); err != nil {
         log.Fatal(err)
     }
 }
-
 ```
 
 首先我们运行代码后，查看一下/proc的文件内容。proc 是一个文件系统，它提供额外的机制可以从内核和内核模块将信息发送给进程。
 
 ```
 # ls /proc
-
-1
-14
-19872
-23
-34
-43
-55
-739
-865
-        bus      filesystems  kpagecount     pagetypeinfo   sysvipc
-
-10
-145
-2
-24
-348
-44
-57
-75
-866
-        cgroups      fs       kpageflags     partitions     timer_list
-
-100
-1472
-20
-25
-35
-45
-58
-76
-869
-        cmdline      interrupts   latency_stats  sched_debug    timer_stats
-
-11
-1475
-20124
-26
-353
-47
-59
-77
-894
-        consoles     iomem    loadavg        schedstat      tty
-
-1174
-15
-20129
-27
-36
-48
-6
-776
-9
-          cpuinfo      ioports  locks          scsi       uptime
-
-1192
-154
-20144
-28
-37
-49
-60
-78
-937
-        crypto       ipmi     mdstat         self       version
-
-12
-155
-20215
-29
-38
-5
-607
-796
-945
-        devices      irq      meminfo        slabinfo       version_signature
-
-1255
-16
-20226
-3
-39
-50
-61
-8
-9460
-       diskstats    kallsyms misc           softirqs       vmallocinfo
-
-1277
-17
-20229
-30
-391
-51
-62
-827
-967
-        dma      kcore    modules        stat       vmstat
-
-1296
-18
-20231
-31
-40
-52
-63
-836
-99
-         driver       
-key
--users    mounts         swaps          xen
-
-13
-19
-21
-32
-41
-53
-7
-860
-  acpi       execdomains  keys     mtrr           sys        zoneinfo
-
-1309
-19853
-22
-33
-42
-54
-733
-862
-  buddyinfo  fb       kmsg     net        sysrq-trigger
-
+1     14     19872  23  34   43  55   739  865        bus      filesystems  kpagecount     pagetypeinfo   sysvipc
+10    145    2      24  348  44  57   75   866        cgroups      fs       kpageflags     partitions     timer_list
+100   1472   20     25  35   45  58   76   869        cmdline      interrupts   latency_stats  sched_debug    timer_stats
+11    1475   20124  26  353  47  59   77   894        consoles     iomem    loadavg        schedstat      tty
+1174  15     20129  27  36   48  6    776  9          cpuinfo      ioports  locks          scsi       uptime
+1192  154    20144  28  37   49  60   78   937        crypto       ipmi     mdstat         self       version
+12    155    20215  29  38   5   607  796  945        devices      irq      meminfo        slabinfo       version_signature
+1255  16     20226  3   39   50  61   8    9460       diskstats    kallsyms misc           softirqs       vmallocinfo
+1277  17     20229  30  391  51  62   827  967        dma      kcore    modules        stat       vmstat
+1296  18     20231  31  40   52  63   836  99         driver       key-users    mounts         swaps          xen
+13    19     21     32  41   53  7    860  acpi       execdomains  keys     mtrr           sys        zoneinfo
+1309  19853  22     33  42   54  733  862  buddyinfo  fb       kmsg     net        sysrq-trigger
 ```
 
 因为这里的/proc还是宿主机的，所以我们看到里面会比较乱，下面我们将/proc mount到我们自己的namesapce下面来。
@@ -566,48 +288,22 @@ key
 ```
 # mount -t proc proc /proc
 # ls /proc
-1
-      consoles   execdomains  ipmi       kpagecount     misc      
-sched_debug 
-swaps 
-         uptime
-
-5
-      cpuinfo    fb       irq        kpageflags     modules       
-schedstat 
-   sys        version
-acpi       crypto     filesystems  kallsyms   latency_stats  mounts    
-scsi 
-    sysrq-trigger  version_signature
-
-buddyinfo 
- devices    fs       kcore      loadavg        mtrr      self     sysvipc        vmallocinfo
-
-bus 
-diskstats 
- interrupts   key-users  locks      net       slabinfo timer_list     vmstat
+1      consoles   execdomains  ipmi       kpagecount     misc      sched_debug  swaps          uptime
+5      cpuinfo    fb       irq        kpageflags     modules       schedstat    sys        version
+acpi       crypto     filesystems  kallsyms   latency_stats  mounts    scsi     sysrq-trigger  version_signature
+buddyinfo  devices    fs       kcore      loadavg        mtrr      self     sysvipc        vmallocinfo
+bus    diskstats  interrupts   key-users  locks      net       slabinfo timer_list     vmstat
 cgroups    dma        iomem    keys       mdstat         pagetypeinfo  softirqs timer_stats    xen
 cmdline    driver     ioports      kmsg       meminfo        partitions    stat     tty        zoneinfo
-
 ```
 
 可以看到，瞬间少了好多命令。下面我们就可以使用 ps 来查看系统的进程了。
 
 ```
 # ps -ef
-
 UID        PID  PPID  C STIME TTY          TIME CMD
-root        
- 1 
- 0 
- 0 
-20:15 pts/4    00:00:00 sh
-root        
- 6 
- 1 
- 0 
-20:19 pts/4    00:00:00 ps -ef
-
+root         1     0  0 20:15 pts/4    00:00:00 sh
+root         6     1  0 20:19 pts/4    00:00:00 ps -ef
 ```
 
 可以看到，在当前namesapce里面，我们的sh 进程是PID 为1 的进程。这里就说明，我们当前的Mount namesapce 里面的mount 和外部空间是隔离的，mount 操作并没有影响到外部。Docker volume 也是利用了这个特性。
@@ -622,99 +318,43 @@ User namespace 主要是隔离用户的用户组ID。也就是说，一个进程
 package main
 
 import (
-    
-"log"
-"os"
-"os/exec"
-"syscall"
-
+    "log"
+    "os"
+    "os/exec"
+    "syscall"
 )
 
 func main() {
-    
-cmd
- := exec.Command(
-"sh"
-)
-
-cmd
-.
-SysProcAttr = 
-&
-syscall.SysProcAttr{
-
+    cmd := exec.Command("sh")
+    cmd.SysProcAttr = &syscall.SysProcAttr{
         Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS |
             syscall.CLONE_NEWUSER,
     }
-    
-cmd
-.
-SysProcAttr.Credential = 
-&
-syscall.Credential{Uid: uint32(1), Gid: uint32(1)}
+    cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(1), Gid: uint32(1)}
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
 
-cmd
-.
-Stdin = os.Stdin
-
-cmd
-.
-Stdout = os.Stdout
-
-cmd
-.
-Stderr = os.Stderr
-
-
-    if err := 
-cmd
-.
-Run(); err != nil {
-
+    if err := cmd.Run(); err != nil {
         log.Fatal(err)
     }
-    os.Exit(-
-1
-)
+    os.Exit(-1)
 }
-
 ```
 
 我们在原来的基础上增加了`syscall.CLONE_NEWUSER`。首先我们以root来运行这个程序，运行前在宿主机上我们看一下当前用户和用户组
 
 ```
-root
-@iZ254rt8xf1Z
-:~/gocode/src/book
-# id
-
-uid=
-0
-(root) gid=
-0
-(root) groups=
-0
-(root)
-
+root@iZ254rt8xf1Z:~/gocode/src/book# id
+uid=0(root) gid=0(root) groups=0(root)
 ```
 
 可以看到我们是root 用户，我们运行一下程序
 
 ```
-root
-@iZ254rt8xf1Z
-:~/gocode/src/book
-# go run main.go
-$ 
-id
-uid=
-65534
-(nobody) gid=
-65534
-(nogroup) groups=
-65534
-(nogroup)
-
+root@iZ254rt8xf1Z:~/gocode/src/book# go run main.go
+$ id
+uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)
 ```
 
 ## Network Namespace {#8}
@@ -727,345 +367,73 @@ Network namespace 是用来隔离网络设备，IP地址端口等网络栈的nam
 package main
 
 import (
-    
-"log"
-"os"
-"os/exec"
-"syscall"
-
+    "log"
+    "os"
+    "os/exec"
+    "syscall"
 )
 
 func main() {
-    
-cmd
- := exec.Command(
-"sh"
-)
-
-cmd
-.
-SysProcAttr = 
-&
-syscall.SysProcAttr{
-
+    cmd := exec.Command("sh")
+    cmd.SysProcAttr = &syscall.SysProcAttr{
         Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS |
             syscall.CLONE_NEWUSER | syscall.CLONE_NEWNET,
     }
-    
-cmd
-.
-SysProcAttr.Credential = 
-&
-syscall.Credential{Uid: uint32(1), Gid: uint32(1)}
+    cmd.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(1), Gid: uint32(1)}
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
 
-cmd
-.
-Stdin = os.Stdin
-
-cmd
-.
-Stdout = os.Stdout
-
-cmd
-.
-Stderr = os.Stderr
-
-
-    if err := 
-cmd
-.
-Run(); err != nil {
-
+    if err := cmd.Run(); err != nil {
         log.Fatal(err)
     }
-    os.Exit(-
-1
-)
+    os.Exit(-1)
 }
-
 ```
 
 首先我们在宿主机上查看一下自己的网络设备。
 
 ```
-root
-@
-iZ254rt8xf1Z
-:~/
-gocode
-/
-src
-/
-book
-# 
-ifconfig
-docker0
-Link
-encap
-:Ethernet
-HWaddr
-02
-:42
-:d7
-:5d
-:c3
-:b9
-inet
-addr
-:192.168.0.1
-Bcast
-:0.0.0.0
-Mask
-:255.255.240.0
-UP
-BROADCAST
-MULTICAST
-MTU
-:1500
-Metric
-:1
-RX
-packets
-:0
-errors
-:0
-dropped
-:0
-overruns
-:0
-frame
-:0
-TX
-packets
-:0
-errors
-:0
-dropped
-:0
-overruns
-:0
-carrier
-:0
-collisions
-:0
-txqueuelen
-:0
-RX
-bytes
-:0
- (
-0.0
- B)  
-TX
-bytes
-:0
- (
-0.0
- B)
+root@iZ254rt8xf1Z:~/gocode/src/book# ifconfig
+docker0   Link encap:Ethernet  HWaddr 02:42:d7:5d:c3:b9
+          inet addr:192.168.0.1  Bcast:0.0.0.0  Mask:255.255.240.0
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
 
+eth0      Link encap:Ethernet  HWaddr 00:16:3e:00:38:cc
+          inet addr:10.170.174.187  Bcast:10.170.175.255  Mask:255.255.248.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:5605 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:1819 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:7129227 (7.1 MB)  TX bytes:159780 (159.7 KB)
 
-eth0
-Link
-encap
-:Ethernet
-HWaddr
-00
-:16
-:3e
-:00
-:38
-:cc
-inet
-addr
-:10.170.174.187
-Bcast
-:10.170.175.255
-Mask
-:255.255.248.0
-UP
-BROADCAST
-RUNNING
-MULTICAST
-MTU
-:1500
-Metric
-:1
-RX
-packets
-:5605
-errors
-:0
-dropped
-:0
-overruns
-:0
-frame
-:0
-TX
-packets
-:1819
-errors
-:0
-dropped
-:0
-overruns
-:0
-carrier
-:0
-collisions
-:0
-txqueuelen
-:1000
-RX
-bytes
-:7129227
- (
-7.1
- MB)  
-TX
-bytes
-:159780
- (
-159.7
- KB)
+eth1      Link encap:Ethernet  HWaddr 00:16:3e:00:6d:4d
+          inet addr:101.200.126.205  Bcast:101.200.127.255  Mask:255.255.252.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:15433 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:6888 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000
+          RX bytes:13287762 (13.2 MB)  TX bytes:1787482 (1.7 MB)
 
-
-eth1
-Link
-encap
-:Ethernet
-HWaddr
-00
-:16
-:3e
-:00
-:6d
-:4d
-inet
-addr
-:101.200.126.205
-Bcast
-:101.200.127.255
-Mask
-:255.255.252.0
-UP
-BROADCAST
-RUNNING
-MULTICAST
-MTU
-:1500
-Metric
-:1
-RX
-packets
-:15433
-errors
-:0
-dropped
-:0
-overruns
-:0
-frame
-:0
-TX
-packets
-:6888
-errors
-:0
-dropped
-:0
-overruns
-:0
-carrier
-:0
-collisions
-:0
-txqueuelen
-:1000
-RX
-bytes
-:13287762
- (
-13.2
- MB)  
-TX
-bytes
-:1787482
- (
-1.7
- MB)
-
-
-lo
-Link
-encap
-:Local
-Loopback
-inet
-addr
-:127.0.0.1
-Mask
-:255.0.0.0
-UP
-LOOPBACK
-RUNNING
-MTU
-:65536
-Metric
-:1
-RX
-packets
-:0
-errors
-:0
-dropped
-:0
-overruns
-:0
-frame
-:0
-TX
-packets
-:0
-errors
-:0
-dropped
-:0
-overruns
-:0
-carrier
-:0
-collisions
-:0
-txqueuelen
-:0
-RX
-bytes
-:0
- (
-0.0
- B)  
-TX
-bytes
-:0
- (
-0.0
- B)
-
+lo        Link encap:Local Loopback
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
 ```
 
 可以看到我们宿主机上有lo, eth0, eth1 等网络设备，下面我们运行一下程序去Network namespce 里面去看看。
 
 ```
-root
-@iZ254rt8xf1Z
-:~/gocode/src/book
-# go run main.go
-$ 
-ifconfig
-
+root@iZ254rt8xf1Z:~/gocode/src/book# go run main.go
+$ ifconfig
 $
-
 ```
 
 我们发现，在Namespace 里面什么网络设备都没有。这样就能展现 Network namespace 与宿主机之间的网络隔离。
