@@ -1,0 +1,18 @@
+{
+    "title":"机器学习",
+    "author": "shunliz",
+    "plugins": ["mathjax", 
+                "image-captions"
+    ],
+  "pluginsConfig": {
+    "image-captions": {
+      "attributes": {
+        "width": "600"
+      },
+      "caption": "图 _PAGE_LEVEL_._PAGE_IMAGE_NUMBER_ - _CAPTION_"
+    },
+    "mathjax": {
+	"forceSVG": true
+    }
+  }
+}
