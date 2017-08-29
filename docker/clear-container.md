@@ -73,3 +73,9 @@ DAX解决方案为在客户机用户空间里得到所有操作系统代码和�
 
 ![](/assets/clearcontainerdaxv2.png)
 
+
+
+参考：
+
+[https://clearlinux.org/documentation/clear-containers/architecture-overview.html](https://clearlinux.org/documentation/clear-containers/architecture-overview.html)
+
