@@ -10,3 +10,9 @@
 
 ![](/assets/kubnet2.png)
 
+**3、不同Node中Pod间通信：**
+
+不同Node中Pod间通信要满足2个条件： Pod的IP不能冲突； 将Pod的IP和所在的Node的IP关联起来，通过这个关联让Pod可以互相访问。
+
+![](/assets/kubnet3.png)
+
