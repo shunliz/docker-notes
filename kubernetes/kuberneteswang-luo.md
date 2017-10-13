@@ -22,5 +22,5 @@ Service是一组Pod的服务抽象，相当于一组Pod的LB，负责将请求�
 
 Pod；Service会为这个LB提供一个IP，一般称为ClusterIP。
 
-
+![](/assets/kubservice1.png)
 
