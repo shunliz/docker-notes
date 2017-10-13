@@ -48,5 +48,17 @@ Kube-proxy是一个简单的网络代理和负载均衡器，它的作用主要�
 
 
 
+**6、Kube-dns介绍**
+
+Kube-dns用来为kubernetes service分配子域名，在集群中可以通过名称访问service；通常kube-dns会为service赋予一个名为“service名称.namespace.svc.cluster.local”的A记录，用来解析service的clusterip。
+
+**Kube-dns组件：**
+
+* 在Kubernetes v1.4版本之前由“Kube2sky、Etcd、Skydns、Exechealthz”四个组件组成。
+
+* 在Kubernetes v1.4版本及之后由“Kubedns、dnsmasq、exechealthz”三个组件组成。
+
+![](/assets/kubdns1.png)
+
 
 
