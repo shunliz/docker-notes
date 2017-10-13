@@ -4,5 +4,9 @@
 
 ![](/assets/kubnet1.png)
 
+**2、同一Node中Pod间通信：**
 
+同一Node中Pod的默认路由都是docker0的地址，由于它们关联在同一个docker0网桥上，地址网段相同，所有它们之间应当是能直接通信的
+
+![](/assets/kubnet2.png)
 
