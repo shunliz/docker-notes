@@ -74,6 +74,7 @@ Kube-dns用来为kubernetes service分配子域名，在集群中可以通过名
 * 通过kubedns容器获取DNS规则，在集群中提供DNS查询服务
 
 * 提供DNS缓存，提高查询性能
+
 * 降低kubedns容器的压力、提高稳定性
 
 * Dockerfile在GitHub上Kubernetes组织的contrib仓库中，位于dnsmasq目录下。
@@ -109,6 +110,24 @@ Kube-dns用来为kubernetes service分配子域名，在集群中可以通过名
   基于BGP协议的路由方案，支持很细致的ACL控制，对混合云亲和度比较高。
 * **Macvlan：**
   从逻辑和Kernel层来看隔离性和性能最优的方案，基于二层隔离，所以需要二层路由器支持，大多数云服务商不支持，所以混合云上比较难以实现。
+
+**4、Flannel容器网络：**
+
+Flannel之所以可以搭建kubernets依赖的底层网络，是因为它可以实现以下两点：
+
+* 它给每个node上的docker容器分配相互不想冲突的IP地址；
+* 它能给这些IP地址之间建立一个覆盖网络，同过覆盖网络，将数据包原封不动的传递到目标容器内。
+
+**Flannel介绍**
+
+* Flannel是CoreOS团队针对Kubernetes设计的一个网络规划服务，简单来说，它的功能是让集群中的不同节点主机创建的Docker容器都具有全集群唯一的虚拟IP地址。
+* 在默认的Docker配置中，每个节点上的Docker服务会分别负责所在节点容器的IP分配。这样导致的一个问题是，不同节点上容器可能获得相同的内外IP地址。并使这些容器之间能够之间通过IP地址相互找到，也就是相互ping通。
+* Flannel的设计目的就是为集群中的所有节点重新规划IP地址的使用规则，从而使得不同节点上的容器能够获得“同属一个内网”且”不重复的”IP地址，并让属于不同节点上的容器能够直接通过内网IP通信。
+* Flannel实质上是一种“覆盖网络\(overlaynetwork\)”，也就是将TCP数据包装在另一种网络包里面进行路由转发和通信，目前已经支持udp、vxlan、host-gw、aws-vpc、gce和alloc路由等数据转发方式，默认的节点间数据通信方式是UDP转发。
+
+
+
+![](/assets/kubflannel1.png)
 
 
 
