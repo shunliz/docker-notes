@@ -136,5 +136,5 @@ Flannel之所以可以搭建kubernets依赖的底层网络，是因为它可以�
 * Calico节点组网可以直接利用数据中心的网络结构（无论是L2或者L3），不需要额外的NAT，隧道或者Overlay Network。
 * Calico基于iptables还提供了丰富而灵活的网络Policy，保证通过各个节点上的ACLs来提供Workload的多租户隔离、安全组以及其他可达性限制等功能。
 
-
+![](/assets/kubcalico1.png)
 
