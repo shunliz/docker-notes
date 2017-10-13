@@ -24,3 +24,5 @@ Pod；Service会为这个LB提供一个IP，一般称为ClusterIP。
 
 ![](/assets/kubservice1.png)
 
+![](/assets/kubservice2.png)
+
