@@ -58,7 +58,7 @@ Kube-dns用来为kubernetes service分配子域名，在集群中可以通过名
 
 ![](/assets/kubdns1.png)
 
-** Kubedns**
+** Kubedns**
 
 * 接入SkyDNS，为dnsmasq提供查询服务。
 * 替换etcd容器，使用树形结构在内存中保存DNS记录。
@@ -71,9 +71,10 @@ Kube-dns用来为kubernetes service分配子域名，在集群中可以通过名
 
 * 在kube-dns插件中的作用是：
 
-1. 通过kubedns容器获取DNS规则，在集群中提供DNS查询服务
-2. 提供DNS缓存，提高查询性能
-3. 降低kubedns容器的压力、提高稳定性
+* 通过kubedns容器获取DNS规则，在集群中提供DNS查询服务
+
+* 提供DNS缓存，提高查询性能
+* 降低kubedns容器的压力、提高稳定性
 
 * Dockerfile在GitHub上Kubernetes组织的contrib仓库中，位于dnsmasq目录下。
 
@@ -84,6 +85,30 @@ Kube-dns用来为kubernetes service分配子域名，在集群中可以通过名
 * 在kube-dns插件中提供健康检查功能。
 * 源码同样在contrib仓库中，位于exec-healthz目录下。
 * 新版中会对两个容器都进行健康检查，更加完善。
+
+## **四、Kubernetes网络开源组件**
+
+**隧道方案（ Overlay Networking ）**
+
+隧道方案在IaaS层的网络中应用也比较多，大家共识是随着节点规模的增长复杂度会提升，而且出了网络问题跟踪起来比较麻烦，大规模集群情况下这是需要考虑的一个点。
+
+* **Weave：**
+  UDP广播，本机建立新的BR，通过PCAP互通
+* **Open vSwitch（OVS）：**
+  基于VxLan和GRE协议，但是性能方面损失比较严重
+* **Flannel：**
+  UDP广播，VxLan
+* **Racher：**
+  IPsec
+
+**路由方案**
+
+路由方案一般是从3层或者2层实现隔离和跨主机容器互通的，出了问题也很容易排查。
+
+* **Calico：**
+  基于BGP协议的路由方案，支持很细致的ACL控制，对混合云亲和度比较高。
+* **Macvlan：**
+  从逻辑和Kernel层来看隔离性和性能最优的方案，基于二层隔离，所以需要二层路由器支持，大多数云服务商不支持，所以混合云上比较难以实现。
 
 
 
