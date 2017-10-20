@@ -46,7 +46,6 @@ ETCD_INITIAL_CLUSTER="master1=http://master1:2380,master2=http://master2:2380,ma
 ETCD_INITIAL_CLUSTER_STATE="new"
 ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
 ETCD_ADVERTISE_CLIENT_URLS="http://master1:2379,http://master1:4001"
-
 ```
 
 master2
@@ -72,7 +71,6 @@ ETCD_INITIAL_CLUSTER="master1=http://master1:2380,master2=http://master2:2380,ma
 ETCD_INITIAL_CLUSTER_STATE="new"
 ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
 ETCD_ADVERTISE_CLIENT_URLS="http://master2:2379,http://master2:4001"
-
 ```
 
 master3
@@ -100,7 +98,7 @@ ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
 ETCD_ADVERTISE_CLIENT_URLS="http://master3:2379,http://master3:4001"
 ```
 
- 改好配置之后，在各个节点上开启etcd服务\(需要关闭firewalld，否则集群建立不起来: systemctl stop firewalld.service\)：
+改好配置之后，在各个节点上开启etcd服务\(需要关闭firewalld，否则集群建立不起来: systemctl stop firewalld.service\)：
 
 ```
 # systemctl restart etcd
@@ -113,7 +111,18 @@ etcdctl set testdir/testkey0  0
 etcdctl get testdir/testkey0
 ```
 
+# 安装kubernetes
 
+编译rpm
+
+```
+yum install docker git -y
+systemctl start docker
+cd /data
+git clone https://github.com/kubernetes/release.git
+cd /data/release/rpm
+./docker-build.sh
+```
 
 
 
