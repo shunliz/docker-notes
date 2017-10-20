@@ -113,16 +113,11 @@ etcdctl get testdir/testkey0
 
 # 安装kubernetes
 
-编译rpm
+所有节点执行：
 
-```
-yum install docker git -y
-systemctl start docker
-cd /data
-git clone https://github.com/kubernetes/release.git
-cd /data/release/rpm
-./docker-build.sh
-```
+yum install kubernetes -y
+
+
 
 
 
