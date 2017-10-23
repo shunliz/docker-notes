@@ -113,11 +113,19 @@ etcdctl get testdir/testkey0
 
 # 安装kubernetes
 
+参考：https://wiki.shileizcc.com/display/KUB/Kubernetes+HA+Cluster+Build
+
 所有节点执行：
 
-yum install kubernetes -y
+https://dl.k8s.io/v1.8.1/kubernetes-client-linux-amd64.tar.gz
 
+https://dl.k8s.io/v1.8.1/kubernetes-server-linux-amd64.tar.gz
 
+https://dl.k8s.io/v1.8.1/kubernetes-node-linux-amd64.tar.gz
+
+```
+tar zxf kubernetes-server-linux-amd64.tar.gz && cp kubernetes/server/bin/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,kube-proxy,kubelet} /usr/local/bin/
+```
 
 
 
