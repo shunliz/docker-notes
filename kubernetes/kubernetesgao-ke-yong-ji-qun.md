@@ -156,10 +156,9 @@ LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
-
 ```
 
-其中NODE\_IP为当前操作ip地址， ETCD\_NODES= master1=https://192.168.2.210:2380,master2=https://192.168.2.211:2380,master3=https://192.168.2.212:2380
+其中NODE\_IP为当前操作ip地址， ETCD\_NODES= master1=[https://192.168.2.210:2380,master2=https://192.168.2.211:2380,master3=https://192.168.2.212:2380](https://192.168.2.210:2380,master2=https://192.168.2.211:2380,master3=https://192.168.2.212:2380)
 
 ```
 systemctl daemon-reload
@@ -181,23 +180,181 @@ etcdctl get testdir/testkey0
 
 参考：[https://wiki.shileizcc.com/display/KUB/Kubernetes+HA+Cluster+Build](https://wiki.shileizcc.com/display/KUB/Kubernetes+HA+Cluster+Build)
 
+https://github.com/opsnull/follow-me-install-kubernetes-cluster
+
 所有节点执行：
 
-[https://dl.k8s.io/v1.8.1/kubernetes-client-linux-amd64.tar.gz](https://dl.k8s.io/v1.8.1/kubernetes-client-linux-amd64.tar.gz)
+wget [https://dl.k8s.io/v1.8.1/kubernetes-client-linux-amd64.tar.gz](https://dl.k8s.io/v1.8.1/kubernetes-client-linux-amd64.tar.gz)
 
-[https://dl.k8s.io/v1.8.1/kubernetes-server-linux-amd64.tar.gz](https://dl.k8s.io/v1.8.1/kubernetes-server-linux-amd64.tar.gz)
+wget [https://dl.k8s.io/v1.8.1/kubernetes-server-linux-amd64.tar.gz](https://dl.k8s.io/v1.8.1/kubernetes-server-linux-amd64.tar.gz)
 
-[https://dl.k8s.io/v1.8.1/kubernetes-node-linux-amd64.tar.gz](https://dl.k8s.io/v1.8.1/kubernetes-node-linux-amd64.tar.gz)
+wget [https://dl.k8s.io/v1.8.1/kubernetes-node-linux-amd64.tar.gz](https://dl.k8s.io/v1.8.1/kubernetes-node-linux-amd64.tar.gz)
 
 ```
 tar zxf kubernetes-server-linux-amd64.tar.gz && cp kubernetes/server/bin/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,kube-proxy,kubelet} /usr/local/bin/
 ```
 
-#####  {#KubernetesHAClusterBuild-kube-apiserver部署}
 
-##### kube-apiserver 部署 {#KubernetesHAClusterBuild-kube-apiserver部署}
 
-`mkdir -p /var/log/kubernetes`
+## 创建 admin 证书
 
-`exportINTERNAL_IP=192.168。2.210`
+kubectl 与 kube-apiserver 的安全端口通信，需要为安全通信提供 TLS 证书和秘钥。
+
+创建 admin 证书签名请求
+
+```
+$ cat admin-csr.json
+{
+  "CN": "admin",
+  "hosts": [],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "system:masters",
+      "OU": "System"
+    }
+  ]
+}
+```
+
+生成 admin 证书和私钥：
+
+```
+$ cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+  -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+  -config=/etc/kubernetes/ssl/ca-config.json \
+  -profile=kubernetes admin-csr.json | cfssljson -bare admin
+$ ls admin*
+admin.csr  admin-csr.json  admin-key.pem  admin.pem
+$ sudo mv admin*.pem /etc/kubernetes/ssl/
+$ rm admin.csr admin-csr.json
+$
+```
+
+```
+$ export MASTER_IP=192.168.2.210 # 替换为 kubernetes master 集群任一机器 IP
+$ export KUBE_APISERVER="https://${MASTER_IP}:6443"
+```
+
+## 创建 kubectl kubeconfig 文件
+
+```
+$ # 设置集群参数
+$ kubectl config set-cluster kubernetes \
+  --certificate-authority=/etc/kubernetes/ssl/ca.pem \
+  --embed-certs=true \
+  --server=${KUBE_APISERVER}
+$ # 设置客户端认证参数
+$ kubectl config set-credentials admin \
+  --client-certificate=/etc/kubernetes/ssl/admin.pem \
+  --embed-certs=true \
+  --client-key=/etc/kubernetes/ssl/admin-key.pem
+$ # 设置上下文参数
+$ kubectl config set-context kubernetes \
+  --cluster=kubernetes \
+  --user=admin
+$ # 设置默认上下文
+$ kubectl config use-context kubernetes
+```
+
+* `admin.pem`证书 O 字段值为`system:masters`，`kube-apiserver`预定义的 RoleBinding`cluster-admin`将 Group`system:masters`与 Role`cluster-admin`绑定，该 Role 授予了调用`kube-apiserver`相关 API 的权限；
+
+* 生成的 kubeconfig 被保存到`~/.kube/config`文件；
+
+
+
+## 创建 TLS 秘钥和证书
+
+etcd 集群启用了双向 TLS 认证，所以需要为 flanneld 指定与 etcd 集群通信的 CA 和秘钥。
+
+创建 flanneld 证书签名请求：
+
+```
+$ cat > flanneld-csr.json <<EOF
+{
+  "CN": "flanneld",
+  "hosts": [],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "k8s",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+```
+
+生成 flanneld 证书和私钥：
+
+```
+$ cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+  -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+  -config=/etc/kubernetes/ssl/ca-config.json \
+  -profile=kubernetes flanneld-csr.json | cfssljson -bare flanneld
+$ ls flanneld*
+flanneld.csr  flanneld-csr.json  flanneld-key.pem flanneld.pem
+$ sudo mkdir -p /etc/flanneld/ssl
+$ sudo mv flanneld*.pem /etc/flanneld/ssl
+$ rm flanneld.csr  flanneld-csr.json
+```
+
+## 安装和配置 flanneld
+
+### 下载 flanneld
+
+```
+$ mkdir flannel
+$ wget https://github.com/coreos/flannel/releases/download/v0.7.1/flannel-v0.7.1-linux-amd64.tar.gz
+$ tar -xzvf flannel-v0.7.1-linux-amd64.tar.gz -C flannel
+$ sudo cp flannel/{flanneld,mk-docker-opts.sh} /root/local/bin
+```
+
+```
+[root@master1 ~]# cat /usr/lib/systemd/system/flanneld.service
+[Unit]
+Description=Flanneld overlay address etcd agent
+After=network.target
+After=network-online.target
+Wants=network-online.target
+After=etcd.service
+Before=docker.service
+
+[Service]
+Type=notify
+ExecStart=/root/local/bin/flanneld 
+  -etcd-cafile=/etc/kubernetes/ssl/ca.pem 
+  -etcd-certfile=/etc/flanneld/ssl/flanneld.pem 
+  -etcd-keyfile=/etc/flanneld/ssl/flanneld-key.pem 
+  -etcd-endpoints="https://192.168.2.210:2379,https://192.168.2.211:2379,https://192.168.2.212:2379" 
+  -etcd-prefix="/kubernetes/network"
+ExecStartPost=/root/local/bin/mk-docker-opts.sh -k DOCKER_NETWORK_OPTIONS -d /run/flannel/docker
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+RequiredBy=docker.service
+
+
+$ sudo systemctl daemon-reload
+$ sudo systemctl enable flanneld
+$ sudo systemctl start flanneld
+$ systemctl status flanneld
+```
+
+##### 部署master {#KubernetesHAClusterBuild-kube-apiserver部署}
+
+
 
