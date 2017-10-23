@@ -15,101 +15,167 @@ etcd集群安装
 192.168.2.214 node2
 ```
 
-三台机器同时安装etcd
+三台 机器创建必须目录 mkdir -p /root/local/bin, mkdir -p /etc/kubernetes/ssl/, mkdir -p /etc/etcd/ssl/
+
+三台机器安装cfssl
 
 ```
-# yum install etcd -y
+$ wget https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+$ chmod +x cfssl_linux-amd64
+$ sudo mv cfssl_linux-amd64 /root/local/bin/cfssl
+
+$ wget https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+$ chmod +x cfssljson_linux-amd64
+$ sudo mv cfssljson_linux-amd64 /root/local/bin/cfssljson
+
+$ wget https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64
+$ chmod +x cfssl-certinfo_linux-amd64
+$ sudo mv cfssl-certinfo_linux-amd64 /root/local/bin/cfssl-certinfo
+
+$ export PATH=/root/local/bin:$PATH
 ```
 
-yum安装的etcd默认配置文件在/etc/etcd/etcd.conf，以下将三个节点上的配置贴出来，请注意不同点（未贴出的，则表明不需要更改）
-
-master1
+其中一台机器生成根CA信息
 
 ```
-# [member]
-ETCD_NAME=master1
-ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-#ETCD_WAL_DIR=""
-#ETCD_SNAPSHOT_COUNT="10000"
-#ETCD_HEARTBEAT_INTERVAL="100"
-#ETCD_ELECTION_TIMEOUT="1000"
-ETCD_LISTEN_PEER_URLS="http://0.0.0.0:2380"
-ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379, http://0.0.0.0:4001"
-#ETCD_MAX_SNAPSHOTS="5"
-#ETCD_MAX_WALS="5"
-#ETCD_CORS=""
-#
-#[cluster]
-ETCD_INITIAL_ADVERTISE_PEER_URLS="http://master1:2380"
-# if you use different ETCD_NAME (e.g. test), set ETCD_INITIAL_CLUSTER value for this name, i.e. "test=http://..."
-ETCD_INITIAL_CLUSTER="master1=http://master1:2380,master2=http://master2:2380,master3=http://master3:2380"
-ETCD_INITIAL_CLUSTER_STATE="new"
-ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
-ETCD_ADVERTISE_CLIENT_URLS="http://master1:2379,http://master1:4001"
+$ cat ca-config.json
+{
+  "signing": {
+    "default": {
+      "expiry": "8760h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": [
+            "signing",
+            "key encipherment",
+            "server auth",
+            "client auth"
+        ],
+        "expiry": "8760h"
+      }
+    }
+  }
+}
+$ cat ca-csr.json
+{
+  "CN": "kubernetes",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "k8s",
+      "OU": "System"
+    }
+  ]
+}
+
+$ cfssl gencert -initca ca-csr.json | cfssljson -bare ca
+$ ls ca*
+ca-config.json  ca.csr  ca-csr.json  ca-key.pem  ca.pem
+$
+
+$ sudo mkdir -p /etc/kubernetes/ssl
+$ sudo cp ca* /etc/kubernetes/ssl
 ```
 
-master2
+然后拷贝到其他几个机器的对应目录。
+
+##### 三台机器配置etcd TLS {#KubernetesHAClusterBuild-kube-apiserver部署}
+
+其中NODE\_IP需要修改成当前操作机器IP
 
 ```
-# [member]
-ETCD_NAME=master2
-ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-#ETCD_WAL_DIR=""
-#ETCD_SNAPSHOT_COUNT="10000"
-#ETCD_HEARTBEAT_INTERVAL="100"
-#ETCD_ELECTION_TIMEOUT="1000"
-ETCD_LISTEN_PEER_URLS="http://0.0.0.0:2380"
-ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379,http://0.0.0.0:4001"
-#ETCD_MAX_SNAPSHOTS="5"
-#ETCD_MAX_WALS="5"
-#ETCD_CORS=""
-#
-#[cluster]
-ETCD_INITIAL_ADVERTISE_PEER_URLS="http://master2:2380"
-# if you use different ETCD_NAME (e.g. test), set ETCD_INITIAL_CLUSTER value for this name, i.e. "test=http://..."
-ETCD_INITIAL_CLUSTER="master1=http://master1:2380,master2=http://master2:2380,master3=http://master3:2380"
-ETCD_INITIAL_CLUSTER_STATE="new"
-ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
-ETCD_ADVERTISE_CLIENT_URLS="http://master2:2379,http://master2:4001"
+$ cat > etcd-csr.json <<EOF
+{
+  "CN": "etcd",
+  "hosts": [
+    "127.0.0.1",
+    "${NODE_IP}"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "k8s",
+      "OU": "System"
+    }
+  ]
+}
+EOF
+
+cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
+  -ca-key=/etc/kubernetes/ssl/ca-key.pem \
+  -config=/etc/kubernetes/ssl/ca-config.json \
+  -profile=kubernetes etcd-csr.json | cfssljson -bare etcd
 ```
 
-master3
+## 创建 etcd 的 systemd unit 文件
 
 ```
-# [member]
-ETCD_NAME=master3
-ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-#ETCD_WAL_DIR=""
-#ETCD_SNAPSHOT_COUNT="10000"
-#ETCD_HEARTBEAT_INTERVAL="100"
-#ETCD_ELECTION_TIMEOUT="1000"
-ETCD_LISTEN_PEER_URLS="http://0.0.0.0:2380"
-ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379,http://0.0.0.0:4001"
-#ETCD_MAX_SNAPSHOTS="5"
-#ETCD_MAX_WALS="5"
-#ETCD_CORS=""
-#
-#[cluster]
-ETCD_INITIAL_ADVERTISE_PEER_URLS="http://master3:2380"
-# if you use different ETCD_NAME (e.g. test), set ETCD_INITIAL_CLUSTER value for this name, i.e. "test=http://..."
-ETCD_INITIAL_CLUSTER="master1=http://master1:2380,master2=http://master2:2380,master3=http://master3:2380"
-ETCD_INITIAL_CLUSTER_STATE="new"
-ETCD_INITIAL_CLUSTER_TOKEN="etcd-cluster"
-ETCD_ADVERTISE_CLIENT_URLS="http://master3:2379,http://master3:4001"
+[root@master3 ~]# cat /usr/lib/systemd/system/etcd.service 
+[Unit]
+Description=Etcd Server
+After=network.target
+After=network-online.target
+Wants=network-online.target
+Documentation=https://github.com/coreos
+
+[Service]
+Type=notify
+WorkingDirectory=/var/lib/etcd/
+ExecStart=/root/local/bin/etcd \\
+  --name=${NODE_NAME} \\
+  --cert-file=/etc/etcd/ssl/etcd.pem \\
+  --key-file=/etc/etcd/ssl/etcd-key.pem \\
+  --peer-cert-file=/etc/etcd/ssl/etcd.pem \\
+  --peer-key-file=/etc/etcd/ssl/etcd-key.pem \\
+  --trusted-ca-file=/etc/kubernetes/ssl/ca.pem \\
+  --peer-trusted-ca-file=/etc/kubernetes/ssl/ca.pem \\
+  --initial-advertise-peer-urls=https://${NODE_IP}:2380 \\
+  --listen-peer-urls=https://${NODE_IP}:2380 \\
+  --listen-client-urls=https://${NODE_IP}:2379,http://127.0.0.1:2379 \\
+  --advertise-client-urls=https://${NODE_IP}:2379 \\
+  --initial-cluster-token=etcd-cluster-0 \\
+  --initial-cluster=${ETCD_NODES} \\
+  --initial-cluster-state=new \\
+  --data-dir=/var/lib/etcd
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+
 ```
 
-改好配置之后，在各个节点上开启etcd服务\(需要关闭firewalld，否则集群建立不起来: systemctl stop firewalld.service\)：
+其中NODE\_IP为当前操作ip地址， ETCD\_NODES= master1=https://192.168.2.210:2380,master2=https://192.168.2.211:2380,master3=https://192.168.2.212:2380
 
 ```
-# systemctl restart etcd
+systemctl daemon-reload
+systemctl enable etcd
+systemctl start etcd
+systemctl status etcd
 ```
 
-测试验证etcd
+# 测试验证etcd
 
 ```
 etcdctl set testdir/testkey0  0
 etcdctl get testdir/testkey0
 ```
+
+# 
 
 # 安装kubernetes
 
@@ -127,5 +193,11 @@ etcdctl get testdir/testkey0
 tar zxf kubernetes-server-linux-amd64.tar.gz && cp kubernetes/server/bin/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,kube-proxy,kubelet} /usr/local/bin/
 ```
 
+#####  {#KubernetesHAClusterBuild-kube-apiserver部署}
 
+##### kube-apiserver 部署 {#KubernetesHAClusterBuild-kube-apiserver部署}
+
+`mkdir -p /var/log/kubernetes`
+
+`exportINTERNAL_IP=192.168。2.210`
 
