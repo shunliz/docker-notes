@@ -432,7 +432,7 @@ cat /usr/lib/systemd/system/kube-apiserver.service
 Description=kube-apiserver
 After=network.target
 After=etcd.service
- 
+
 [Service]
 EnvironmentFile=-/etc/kubernetes/apiserver
 ExecStart=/usr/local/bin/kube-apiserver \
@@ -466,19 +466,43 @@ ExecStart=/usr/local/bin/kube-apiserver \
 Restart=on-failure
 Type=notify
 LimitNOFILE=65536
- 
+
 [Install]
 WantedBy=multi-user.target
+```
 
+```
+$ systemctl daemon-reload
+$ systemctl enable kube-apiserver
+$ systemctl start kube-apiserver
+$ systemctl status kube-apiserver
+```
+
+## 配置 kubectl 访问 apiserver {#KubernetesHAClusterBuild-配置kubectl访问apiserver}
+
+```
+kubectl config set-cluster kubernetes \
+  --certificate-authority=/etc/kubernetes/ssl/ca.pem \
+  --embed-certs=true \
+  --server="https://192.168.2.210:6443" \
+  --kubeconfig=admin.conf
+  
+ kubectl config set-credentials kubernetes-admin \
+  --client-certificate=/etc/kubernetes/ssl/admin.pem \
+  --embed-certs=true \
+  --client-key=/etc/kubernetes/ssl/admin-key.pem \
+  --kubeconfig=admin.conf
+  
+ 
+  kubectl config set-context kubernetes-admin@kubernetes \
+  --cluster=kubernetes \
+  --user=kubernetes-admin \
+  --kubeconfig=admin.conf
+  
+  kubectl config use-context kubernetes-admin@kubernetes --kubeconfig=admin.conf
 ```
 
 
-
-
-
-
-
-## 
 
 ## 
 
