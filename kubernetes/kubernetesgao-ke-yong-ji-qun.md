@@ -177,7 +177,7 @@ etcdctl get testdir/testkey0
 yum install -y pcs pacemaker corosync fence-agents-all resource-agent
 ```
 
-准备配置文件  \(三台都需要\)**/etc/corosync/corosync.conf**
+准备配置文件  \(三台都需要\)**/etc/corosync/corosync.conf**
 
 ```
 totem {
@@ -186,28 +186,28 @@ totem {
     cluster_name: kubernetes-cluster
     transport: udpu
 }
- 
+
 nodelist {
     node {
         ring0_addr: node01
         nodeid: 1
     }
- 
+
     node {
         ring0_addr: node02
         nodeid: 2
     }
- 
+
     node {
         ring0_addr: node03
         nodeid: 3
     }
 }
- 
+
 quorum {
     provider: corosync_votequorum
 }
- 
+
 logging {
     to_logfile: yes
     logfile: /var/log/cluster/corosync.log
@@ -236,7 +236,7 @@ scp -p authkey corosync.conf root@node02:/etc/corosync
 
 在master1 上创建并启动名为 kubernetes-cluster 的集群，其中master{1,2,3}
 
- 为集群成员：
+为集群成员：
 
 ```
 systemctl start pcsd
@@ -253,7 +253,6 @@ $ pcs property set on-quorum-policy=false
 $ crm_verify -L -V
 
  pcs resource providers
- 
 ```
 
 或者通过 pcs 配置：
@@ -261,8 +260,6 @@ $ crm_verify -L -V
 ```
 pcs resource create VIP ocf:heartbeat:IPaddr2 ip=192.166.1.222 cidr_netmask=24 nic=eno16777728 op monitor interval=15s
 ```
-
-
 
 # Haproxy Proxy Kubernetes APIServer in VIP {#HaproxyProxyKubernetesApiServerinVIP-HaproxyProxyKubernetesAPIServerinVIP}
 
@@ -302,11 +299,11 @@ listen Kubernetes-Cluster
   server node02 192.166.1.2:6443 check inter 2000 fall 3
   server node03 192.166.1.13:6443 check inter 2000 fall 3
 EOF
+
+
+systemctl start haproxy
+systemctl status haproxy
 ```
-
-
-
-
 
 # 安装kubernetes
 
@@ -335,10 +332,11 @@ tar zxf kubernetes-server-linux-amd64.tar.gz && cp kubernetes/server/bin/{kube-a
     "CN": "kubernetes",
     "hosts": [
       "127.0.0.1",
-      "192.166.1.12",
-      "192.166.1.2",
-      "192.166.1.13",
+      "192.168.2.210",
+      "192.168.2.211",
+      "192.168.2.212",
       "10.96.0.1",
+      "192.168.2.215"
       "kubernetes",
       "kubernetes.default",
       "kubernetes.default.svc",
@@ -361,9 +359,124 @@ tar zxf kubernetes-server-linux-amd64.tar.gz && cp kubernetes/server/bin/{kube-a
 }
 ```
 
-## 
+下面生成 kube-apiserver 的证书和私钥：
 
-## 
+```
+cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=frognew apiserver-csr.json | cfssljson -bare apiserver
+```
+
+```
+cat controller-manager-csr.json
+{
+  "CN": "system:kube-controller-manager",
+  "hosts": [
+      "192.168.2.210",
+      "192.168.2.211",
+      "192.168.2.212"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "system:kube-controller-manager",
+      "OU": "cloudnative"
+    }
+  ]
+}
+```
+
+```
+cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem -ca-key=/etc/kubernetes/ssl/ca-key.pem -config=/etc/kubernetes/ssl/ca-config.json -profile=kubernetes controller-manager-csr.json | cfssljson -bare controller-manager
+```
+
+```
+ cat scheduler-csr.json 
+
+{
+  "CN": "system:kube-scheduler",
+  "hosts": [
+      "192.168.2.210",
+      "192.168.2.211",
+      "192.168.2.212"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "BeiJing",
+      "L": "BeiJing",
+      "O": "system:kube-scheduler",
+      "OU": "cloudnative"
+    }
+  ]
+}
+```
+
+```
+cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem -ca-key=/etc/kubernetes/ssl/ca-key.pem -config=/etc/kubernetes/ssl/ca-config.json -profile=kubernetes scheduler-csr.json | cfssljson -bare scheduler
+```
+
+部署kube-apiserver
+
+```
+cat /usr/lib/systemd/system/kube-apiserver.service
+[Unit]
+Description=kube-apiserver
+After=network.target
+After=etcd.service
+ 
+[Service]
+EnvironmentFile=-/etc/kubernetes/apiserver
+ExecStart=/usr/local/bin/kube-apiserver \
+        --logtostderr=true \
+        --v=0 \
+        --advertise-address=192.168.2.210 \
+        --bind-address=192.168.2.210 \
+        --secure-port=6443 \
+        --insecure-port=0 \
+        --allow-privileged=true \
+        --etcd-servers=https://192.168.2.210:2379,https://192.168.2.211:2379,https://192.168.2.212:2379 \
+        --etcd-cafile=/etc/kubernetes/ssl/ca.pem \
+        --etcd-certfile=/etc/etcd/ssl/etcd.pem \
+        --etcd-keyfile=/etc/etcd/ssl/etcd-key.pem \
+        --storage-backend=etcd3 \
+        --service-node-port-range=79-39999 \
+        --service-cluster-ip-range=10.96.0.0/12 \
+        --tls-cert-file=/etc/kubernetes/ssl/apiserver.pem \
+        --tls-private-key-file=/etc/kubernetes/ssl/apiserver-key.pem \
+        --client-ca-file=/etc/kubernetes/ssl/ca.pem \
+        --service-account-key-file=/etc/kubernetes/ssl/ca-key.pem \
+        --experimental-bootstrap-token-auth=true \
+        --apiserver-count=3 \
+        --enable-swagger-ui=true \
+        --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,ResourceQuota,DefaultTolerationSeconds \
+        --authorization-mode=RBAC \
+        --audit-log-maxage=30 \
+        --audit-log-maxbackup=3 \
+        --audit-log-maxsize=100 \
+        --audit-log-path=/var/log/kubernetes/audit.log
+Restart=on-failure
+Type=notify
+LimitNOFILE=65536
+ 
+[Install]
+WantedBy=multi-user.target
+
+```
+
+
+
+
+
+
 
 ## 
 
