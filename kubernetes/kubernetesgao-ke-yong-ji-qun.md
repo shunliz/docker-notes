@@ -486,25 +486,29 @@ kubectl config set-cluster kubernetes \
   --embed-certs=true \
   --server="https://192.168.2.210:6443" \
   --kubeconfig=admin.conf
-  
+
  kubectl config set-credentials kubernetes-admin \
   --client-certificate=/etc/kubernetes/ssl/admin.pem \
   --embed-certs=true \
   --client-key=/etc/kubernetes/ssl/admin-key.pem \
   --kubeconfig=admin.conf
-  
- 
+
+
   kubectl config set-context kubernetes-admin@kubernetes \
   --cluster=kubernetes \
   --user=kubernetes-admin \
   --kubeconfig=admin.conf
-  
+
   kubectl config use-context kubernetes-admin@kubernetes --kubeconfig=admin.conf
+```
+
+```
+cp admin.conf ~/.kube/config
 ```
 
 
 
-## 
+
 
 ## 创建 admin 证书
 
