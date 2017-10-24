@@ -93,24 +93,29 @@ $ sudo cp ca* /etc/kubernetes/ssl
 ```
 $ cat > etcd-csr.json <<EOF
 {
-  "CN": "etcd",
-  "hosts": [
-    "127.0.0.1",
-    "${NODE_IP}"
-  ],
-  "key": {
-    "algo": "rsa",
-    "size": 2048
-  },
-  "names": [
-    {
-      "C": "CN",
-      "ST": "BeiJing",
-      "L": "BeiJing",
-      "O": "k8s",
-      "OU": "System"
-    }
-  ]
+    "CN": "etcd",
+    "hosts": [
+      "127.0.0.1",
+      "192.168.2.210",
+      "192.168.2.211",
+      "192.168.2.212",
+      "master1",
+      "master2",
+      "master3"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "CN",
+            "ST": "BeiJing",
+            "L": "BeiJing",
+            "O": "k8s",
+            "OU": "System"
+        }
+    ]
 }
 EOF
 
@@ -122,7 +127,7 @@ cfssl gencert -ca=/etc/kubernetes/ssl/ca.pem \
 
 ## 创建 etcd 的 systemd unit 文件
 
-```
+```bash
 [root@master3 ~]# cat /usr/lib/systemd/system/etcd.service 
 [Unit]
 Description=Etcd Server
@@ -134,22 +139,7 @@ Documentation=https://github.com/coreos
 [Service]
 Type=notify
 WorkingDirectory=/var/lib/etcd/
-ExecStart=/root/local/bin/etcd \\
-  --name=${NODE_NAME} \\
-  --cert-file=/etc/etcd/ssl/etcd.pem \\
-  --key-file=/etc/etcd/ssl/etcd-key.pem \\
-  --peer-cert-file=/etc/etcd/ssl/etcd.pem \\
-  --peer-key-file=/etc/etcd/ssl/etcd-key.pem \\
-  --trusted-ca-file=/etc/kubernetes/ssl/ca.pem \\
-  --peer-trusted-ca-file=/etc/kubernetes/ssl/ca.pem \\
-  --initial-advertise-peer-urls=https://${NODE_IP}:2380 \\
-  --listen-peer-urls=https://${NODE_IP}:2380 \\
-  --listen-client-urls=https://${NODE_IP}:2379,http://127.0.0.1:2379 \\
-  --advertise-client-urls=https://${NODE_IP}:2379 \\
-  --initial-cluster-token=etcd-cluster-0 \\
-  --initial-cluster=${ETCD_NODES} \\
-  --initial-cluster-state=new \\
-  --data-dir=/var/lib/etcd
+ExecStart=/root/local/bin/etcd --name master1 --cert-file=/etc/etcd/ssl/etcd.pem --key-file=/etc/etcd/ssl/etcd-key.pem --peer-cert-file=/etc/etcd/ssl/etcd.pem --peer-key-file=/etc/etcd/ssl/etcd-key.pem --trusted-ca-file=/etc/kubernetes/ssl/ca.pem --peer-trusted-ca-file=/etc/kubernetes/ssl/ca.pem  --initial-advertise-peer-urls=https://192.168.2.210:2380  --listen-peer-urls=https://192.168.2.210:2380 --listen-client-urls=https://192.168.2.210:2379,https://127.0.0.1:2379 --advertise-client-urls=https://192.168.2.210:2379 --initial-cluster-token=etcd-cluster-0 --initial-cluster=master1=https://192.168.2.210:2380,master2=https://192.168.2.211:2380,master3=https://192.168.2.212:2380  --initial-cluster-state=new --data-dir=/var/lib/etcd
 Restart=on-failure
 RestartSec=5
 LimitNOFILE=65536
@@ -170,17 +160,32 @@ systemctl status etcd
 # 测试验证etcd
 
 ```
+etcdctl \
+  --ca-file=/etc/kubernetes/ssl/ca.pem \
+  --cert-file=/etc/etcd/ssl/etcd.pem \
+  --key-file=/etc/etcd/ssl/etcd-key.pem \
+  --endpoints=https://master1:2379,https://master2:2379,https://master3:2379 \
+  cluster-health
+
 etcdctl set testdir/testkey0  0
 etcdctl get testdir/testkey0
 ```
 
-# 
+
+
+# Pacemaker Corosync Kubernetes VIP {#Pacemaker-PacemakerCorosyncKubernetesVIP}
+
+```
+yum install -y pcs pacemaker corosync fence-agents-all resource-agent
+```
+
+
 
 # 安装kubernetes
 
 参考：[https://wiki.shileizcc.com/display/KUB/Kubernetes+HA+Cluster+Build](https://wiki.shileizcc.com/display/KUB/Kubernetes+HA+Cluster+Build)
 
-https://github.com/opsnull/follow-me-install-kubernetes-cluster
+[https://github.com/opsnull/follow-me-install-kubernetes-cluster](https://github.com/opsnull/follow-me-install-kubernetes-cluster)
 
 所有节点执行：
 
@@ -194,7 +199,48 @@ wget [https://dl.k8s.io/v1.8.1/kubernetes-node-linux-amd64.tar.gz](https://dl.k8
 tar zxf kubernetes-server-linux-amd64.tar.gz && cp kubernetes/server/bin/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,kube-proxy,kubelet} /usr/local/bin/
 ```
 
+##### 创建 kube-apiserver 证书和私钥 {#KubernetesHAClusterBuild-创建kube-apiserver证书和私钥}
 
+创建 kube-apiserver 证书签名请求配置
+
+```
+{
+    "CN": "kubernetes",
+    "hosts": [
+      "127.0.0.1",
+      "192.166.1.12",
+      "192.166.1.2",
+      "192.166.1.13",
+      "10.96.0.1",
+      "kubernetes",
+      "kubernetes.default",
+      "kubernetes.default.svc",
+      "kubernetes.default.svc.cluster",
+      "kubernetes.default.svc.cluster.local"
+    ],
+    "key": {
+        "algo": "rsa",
+        "size": 2048
+    },
+    "names": [
+        {
+            "C": "CN",
+            "ST": "BeiJing",
+            "L": "BeiJing",
+            "O": "k8s",
+            "OU": "cloudnative"
+        }
+    ]
+}
+```
+
+## 
+
+## 
+
+## 
+
+## 
 
 ## 创建 admin 证书
 
@@ -266,8 +312,6 @@ $ kubectl config use-context kubernetes
 * `admin.pem`证书 O 字段值为`system:masters`，`kube-apiserver`预定义的 RoleBinding`cluster-admin`将 Group`system:masters`与 Role`cluster-admin`绑定，该 Role 授予了调用`kube-apiserver`相关 API 的权限；
 
 * 生成的 kubeconfig 被保存到`~/.kube/config`文件；
-
-
 
 ## 创建 TLS 秘钥和证书
 
