@@ -171,13 +171,140 @@ etcdctl set testdir/testkey0  0
 etcdctl get testdir/testkey0
 ```
 
-
-
 # Pacemaker Corosync Kubernetes VIP {#Pacemaker-PacemakerCorosyncKubernetesVIP}
 
 ```
 yum install -y pcs pacemaker corosync fence-agents-all resource-agent
 ```
+
+准备配置文件  \(三台都需要\)**/etc/corosync/corosync.conf**
+
+```
+totem {
+    version: 2
+    secauth: off
+    cluster_name: kubernetes-cluster
+    transport: udpu
+}
+ 
+nodelist {
+    node {
+        ring0_addr: node01
+        nodeid: 1
+    }
+ 
+    node {
+        ring0_addr: node02
+        nodeid: 2
+    }
+ 
+    node {
+        ring0_addr: node03
+        nodeid: 3
+    }
+}
+ 
+quorum {
+    provider: corosync_votequorum
+}
+ 
+logging {
+    to_logfile: yes
+    logfile: /var/log/cluster/corosync.log
+    to_syslog: yes
+}
+```
+
+```
+$ passwd hacluster  #  这里使用 passw0rd
+
+$ cd /etc/corosync/
+$ ssh-keygen -t rsa # 准备环境时已配置就不需要配置了
+$ corosync-keygen  # 等待完成即可，不用管稍微有点慢
+# $ mv /dev/{random,random.bak}   # 可以直接完成的操作，不需要等待
+# $ ln -s /dev/urandom /dev/random
+$ chmod 400 authkey
+```
+
+把生成的配置文件以及密钥认证拷贝到另外两个节点上：
+
+```
+scp -p authkey corosync.conf root@node02:/etc/corosync
+```
+
+设置集群互相验证，在 一台上操作 \(其他机器也可以\)
+
+在master1 上创建并启动名为 kubernetes-cluster 的集群，其中master{1,2,3}
+
+ 为集群成员：
+
+```
+systemctl start pcsd
+pcs cluster auth master1 master2 master3 -u hacluster -p passw0rd --force
+pcs cluster setup --force --name kubernetes-cluster master1 master2 master3
+pcs cluster enable --all
+pcs cluster start --all
+pcs cluster status
+
+crm_verify -L -V
+$ pcs property set stonith-enabled=false  # 禁用 STONITH
+# 无法仲裁时候，选择忽略
+$ pcs property set on-quorum-policy=false
+$ crm_verify -L -V
+
+ pcs resource providers
+ 
+```
+
+或者通过 pcs 配置：
+
+```
+pcs resource create VIP ocf:heartbeat:IPaddr2 ip=192.166.1.222 cidr_netmask=24 nic=eno16777728 op monitor interval=15s
+```
+
+
+
+# Haproxy Proxy Kubernetes APIServer in VIP {#HaproxyProxyKubernetesApiServerinVIP-HaproxyProxyKubernetesAPIServerinVIP}
+
+```
+yum install -y haproxy
+mv /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.back
+
+cat > /etc/haproxy/haproxy.cfg << EOF
+global
+  log 127.0.0.1 local0
+  log 127.0.0.1 local1 notice
+  maxconn 4096
+  chroot /usr/share/haproxy
+  user haproxy
+  group haproxy
+  daemon
+defaults
+     log global
+     mode tcp
+     timeout connect 5000ms
+     timeout client 50000ms
+     timeout server 50000ms
+frontend stats-front
+  bind *:8088
+  mode http
+  default_backend stats-back
+backend stats-back
+  mode http
+  balance source
+  stats uri /haproxy/stats
+  stats auth admin:passw0rd
+listen Kubernetes-Cluster
+  bind 192.166.1.222:6443
+  balance leastconn
+  mode tcp
+  server node01 192.166.1.12:6443 check inter 2000 fall 3
+  server node02 192.166.1.2:6443 check inter 2000 fall 3
+  server node03 192.166.1.13:6443 check inter 2000 fall 3
+EOF
+```
+
+
 
 
 
