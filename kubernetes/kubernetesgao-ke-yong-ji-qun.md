@@ -507,12 +507,6 @@ cp admin.conf ~/.kube/config
  kubectl get cs
 ```
 
-
-
-
-
-
-
 ## 
 
 ## 创建 admin 证书
