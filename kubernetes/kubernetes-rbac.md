@@ -68,11 +68,23 @@ view                                           6d
 下面在default命名空间内创建一个名称为pod-reader的Role，role-pord-reader.yaml文件如下：
 
 ```
-
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
 ```
 
 ```
-
+kubectl create -f role-pord-reader.yaml
+role "pod-reader" created
+kubectl get roles
+NAME         AGE
+pod-reader   1m
 ```
 
 注意RBAC在Kubernetes 1.6还处于Beta阶段，所以API归属在`rbac.authorization.k8s.io`，上面的`apiVersion`为`rbac.authorization.k8s.io/v1beta1`。
