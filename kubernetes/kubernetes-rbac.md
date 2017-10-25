@@ -179,11 +179,39 @@ API Server已经创建一系列ClusterRole和ClusterRoleBinding。这些资源�
 可以使用`kubernetes.io/bootstrapping=rbac-defaults`这个label查看默认的ClusterRole和ClusterRoleBinding：
 
 ```
-
+kubectl get clusterrole -l kubernetes.io/bootstrapping=rbac-defaults
+NAME                                           AGE
+admin                                          6d
+cluster-admin                                  6d
+edit                                           6d
+system:auth-delegator                          6d
+system:basic-user                              6d
+system:controller:attachdetach-controller      6d
+system:controller:certificate-controller       6d
+......
+system:node-problem-detector                   6d
+system:node-proxier                            6d
+system:persistent-volume-provisioner           6d
+view                                           6d
 ```
 
 ```
-
+kubectl get clusterrolebinding -l kubernetes.io/bootstrapping=rbac-defaults
+NAME                                           AGE
+cluster-admin                                  6d
+system:basic-user                              6d
+system:controller:attachdetach-controller      6d
+system:controller:certificate-controller       6d
+system:controller:cronjob-controller           6d
+system:controller:daemon-set-controller        6d
+system:controller:deployment-controller        6d
+......
+system:discovery                               6d
+system:kube-controller-manager                 6d
+system:kube-dns                                6d
+system:kube-scheduler                          6d
+system:node                                    6d
+system:node-proxier                            6d
 ```
 
 关于这些角色详细的权限信息可以查看[Default Roles and Role Bindings](https://kubernetes.io/docs/admin/authorization/rbac/#default-roles-and-role-bindings)
