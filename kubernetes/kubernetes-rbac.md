@@ -41,7 +41,26 @@ kube-system   system:controller:token-cleaner             6d
 ```
 
 ```
-
+kubectl get ClusterRoles
+NAME                                           AGE
+admin                                          6d
+cluster-admin                                  6d
+edit                                           6d
+flannel                                        5d
+system:auth-delegator                          6d
+system:basic-user                              6d
+system:controller:attachdetach-controller      6d
+......
+system:kube-aggregator                         6d
+system:kube-controller-manager                 6d
+system:kube-dns                                6d
+system:kube-scheduler                          6d
+system:node                                    6d
+system:node-bootstrapper                       6d
+system:node-problem-detector                   6d
+system:node-proxier                            6d
+system:persistent-volume-provisioner           6d
+view                                           6d
 ```
 
 可以看到之前创建的这个Kubernetes集群中已经内置或创建很多的Role和ClusterRole。
