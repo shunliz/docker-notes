@@ -12,4 +12,5 @@
   * [Kubernetes RBAC](kubernetes/kubernetes-rbac.md)
   * [Kubernetes的负载均衡问题\(Nginx Ingress\)](kubernetes/kubernetesde-fu-zai-jun-heng-wen-989828-nginx-ingress.md)
   * [guestbook-demo](kubernetes/guestbook-demo.md)
+  * [弹性伸缩与滚动升级](kubernetes/dan-xing-shen-suo-yu-gun-dong-sheng-ji.md)
 
