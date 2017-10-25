@@ -92,7 +92,15 @@ pod-reader   1m
 下面再给一个ClusterRole的定义文件：
 
 ```
-
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  # "namespace" omitted since ClusterRoles are not namespaced
+  name: secret-reader
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list"]
 ```
 
 ### RoleBinding和ClusterRoleBinding {#ref3}
@@ -102,21 +110,66 @@ RoleBinding把Role绑定到账户主体Subject，让Subject继承Role所在names
 账户主体Subject在这里还是叫“用户”吧，包含组group，用户user和ServiceAccount。
 
 ```
-
+kubectl get rolebinding --all-namespaces
+NAMESPACE     NAME                                   AGE
+kube-public   kubeadm:bootstrap-signer-clusterinfo   6d
+kube-public   system:controller:bootstrap-signer     6d
+kube-system   system:controller:bootstrap-signer     6d
+kube-system   system:controller:token-cleaner        6d
 ```
 
 ```
-
+kubectl get clusterrolebinding
+NAME                                           AGE
+cluster-admin                                  6d
+flannel                                        6d
+kubeadm:kubelet-bootstrap                      6d
+kubeadm:node-proxier                           6d
+system:basic-user                              6d
+system:controller:attachdetach-controller      6d
+system:controller:certificate-controller       6d
+......
+system:controller:ttl-controller               6d
+system:discovery                               6d
+system:kube-controller-manager                 6d
+system:kube-dns                                6d
+system:kube-scheduler                          6d
+system:node                                    6d
+system:node-proxier                            6d
 ```
 
 实际上一个RoleBinding既可以引用相同namespace下的Role；又可以引用一个ClusterRole，RoleBinding引用ClusterRole时用户继承的权限会被限制在RoleBinding所在的namespace下。
 
 ```
-
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: read-pods
+  namespace: default
+subjects:
+- kind: User
+  name: jane
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
 ```
 
 ```
-
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: read-secrets
+  namespace: development # This only grants permissions within the "development" namespace.
+subjects:
+- kind: User
+  name: dave
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: secret-reader
+  apiGroup: rbac.authorization.k8s.io
 ```
 
 ## Kubernetes中默认的Role和RoleBinding {#ref4}
