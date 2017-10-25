@@ -12,7 +12,7 @@ Kubernetes关于服务的暴露主要是通过NodePort方式，通过绑定minio
 
 具体实现如下:
 
-**1.生成一个默认的后端，如果遇到解析不到的URL就转发到默认后端页面  
+**1.生成一个默认的后端，如果遇到解析不到的URL就转发到默认后端页面    
 **
 
 ```
@@ -74,7 +74,7 @@ spec:
 
 具体文件可以参考官方的
 
-https://github.com/kubernetes/ingress/blob/master/examples/daemonset/nginx/nginx-ingress-daemonset.yaml
+[https://github.com/kubernetes/ingress/blob/master/examples/daemonset/nginx/nginx-ingress-daemonset.yaml](https://github.com/kubernetes/ingress/blob/master/examples/daemonset/nginx/nginx-ingress-daemonset.yaml)
 
 这里贴一个我的
 
@@ -140,12 +140,114 @@ spec:
 
 ```
 - --apiserver-host=http://192.168.0.105:8080
-
 ```
 
 后成功启动.
 
 ![](/assets/kube-ingress.png)
+
+**3.配置ingress**
+
+```
+[root@k8s-master ingress]# cat dashboard-weblogic.yaml 
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: dashboard-weblogic-ingress
+  namespace: kube-system
+spec:
+  rules:
+  - host: helloworld.eric
+    http:
+      paths:
+      - path: /console
+        backend:
+          serviceName: helloworldsvc 
+          servicePort: 7001
+      - path: /
+        backend:
+          serviceName: kubernetes-dashboard
+          servicePort: 80
+```
+
+理解如下:
+
+* host指虚拟出来的域名，具体地址\(我理解应该是Ingress-controller那台Pod所在的主机的地址\)应该加入/etc/hosts中,这样所有去helloworld.eric的请求都会发到nginx
+* path:/console匹配后面的应用路径
+* servicePort主要是定义服务的时候的端口，不是NodePort.
+* path:/ 匹配后面dashboard应用的路径,以前通过访问master节点8080/ui进入dashboard的，但dashboard其实是部署在minion节点中，实际是通过某个路由语句转发过去而已，dashboard真实路径如下:
+
+![](/assets/kube-ingress2.png)
+
+而yaml文件是
+
+```
+[root@k8s-master ~]# cat kubernetes-dashboard.yaml 
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+# Keep the name in sync with image version and
+# gce/coreos/kube-manifests/addons/dashboard counterparts
+  name: kubernetes-dashboard-latest
+  namespace: kube-system
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        k8s-app: kubernetes-dashboard
+        version: latest
+        kubernetes.io/cluster-service: "true"
+    spec:
+      containers:
+      - name: kubernetes-dashboard
+        image: gcr.io/google_containers/kubernetes-dashboard-amd64:v1.5.1
+        resources:
+          # keep request = limit to keep this container in guaranteed class
+          limits:
+            cpu: 100m
+            memory: 50Mi
+          requests:
+            cpu: 100m
+            memory: 50Mi
+        ports:
+        - containerPort: 9090
+        args:
+         -  --apiserver-host=http://192.168.0.105:8080
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+---
+kind: Service
+metadata:
+  name: kubernetes-dashboard
+  namespace: kube-system
+  labels:
+    k8s-app: kubernetes-dashboard
+    kubernetes.io/cluster-service: "true"
+spec:
+  selector:
+    k8s-app: kubernetes-dashboard
+  ports:
+  - port: 80
+    targetPort: 9090
+```
+
+所以访问192.168.51.5:9090端口就会出现dashboard
+
+  
+![](/assets/kube-ingress3.png)
+
+**4.测试 **
+
+Ok,一切就绪，装逼开始
+
+访问http://helloworld.eric/console
+
+访问http://helloword.eric/    出现dashboard
 
 
 
