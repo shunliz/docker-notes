@@ -12,7 +12,7 @@ Kubernetes关于服务的暴露主要是通过NodePort方式，通过绑定minio
 
 具体实现如下:
 
-**1.生成一个默认的后端，如果遇到解析不到的URL就转发到默认后端页面    
+**1.生成一个默认的后端，如果遇到解析不到的URL就转发到默认后端页面      
 **
 
 ```
@@ -238,16 +238,95 @@ spec:
 
 所以访问192.168.51.5:9090端口就会出现dashboard
 
-  
 ![](/assets/kube-ingress3.png)
 
-**4.测试 **
+**4.测试 **
 
 Ok,一切就绪，装逼开始
 
-访问http://helloworld.eric/console
+访问[http://helloworld.eric/console](http://helloworld.eric/console)
 
-访问http://helloword.eric/    出现dashboard
+访问[http://helloword.eric/](http://helloword.eric/)    出现dashboard
+
+
+
+**5.配置TLS SSL访问**
+
+TLS的配置相当于WebLogic中证书的配置，配置过程如下
+
+* 证书生成
+
+```
+# 生成 CA 自签证书
+mkdir cert && cd cert
+openssl genrsa -out ca-key.pem 2048
+openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=kube-ca"
+
+# 编辑 openssl 配置
+cp /etc/pki/tls/openssl.cnf .
+vim openssl.cnf
+
+# 主要修改如下
+[req]
+req_extensions = v3_req # 这行默认注释关着的 把注释删掉
+# 下面配置是新增的
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = helloworld.eric
+#DNS.2 = kibana.mritd.me
+
+# 生成证书
+openssl genrsa -out ingress-key.pem 2048
+openssl req -new -key ingress-key.pem -out ingress.csr -subj "/CN=helloworld.eric" -config openssl.cnf
+openssl x509 -req -in ingress.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ingress.pem -days 365 -extensions v3_req -extfile openssl.cnf
+```
+
+需要注意的是DNS需要修改成自己的host名,然后在配置csr证书请求的时候需要将域名或者访问名带入subj,比如
+
+```
+-subj "/CN=helloworld.eric" 
+```
+
+* 创建secret
+
+```
+kubectl create secret tls ingress-secret --namespace=kube-system --key cert/ingress-key.pem --cert cert/ingress.pem 
+```
+
+修改Ingress文件启用证书
+
+```
+[root@k8s-master ingress]# cat tls-weblogic.yaml 
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: dashboard-weblogic-ingress
+  namespace: kube-system
+spec:
+  tls:
+  - hosts:
+    - helloworld.eric
+    secretName: ingress-secret
+  rules:
+  - host: helloworld.eric
+    http:
+      paths:
+      - path: /console
+        backend:
+          serviceName: helloworldsvc 
+          servicePort: 7001
+      - path: /
+        backend:
+          serviceName: kubernetes-dashboard
+          servicePort: 80
+```
+
+ 测试
+
+ 然后访问helloworld.eric/console,会自动转到https页面，同时查看证书并加入授信列表，可见portal
 
 
 
