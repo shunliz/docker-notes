@@ -11,4 +11,5 @@
   * [kubernetes高可用集群](kubernetes/kubernetesgao-ke-yong-ji-qun.md)
   * [Kubernetes RBAC](kubernetes/kubernetes-rbac.md)
   * [Kubernetes的负载均衡问题\(Nginx Ingress\)](kubernetes/kubernetesde-fu-zai-jun-heng-wen-989828-nginx-ingress.md)
+  * [guestbook-demo](kubernetes/guestbook-demo.md)
 
