@@ -76,8 +76,6 @@ Storage Driver: aufs
 
 `AUFS`通过在最顶层\(读写层\)生成一个`whiteout`文件来删除文件。whiteout文件会掩盖下面只读层相应文件的存在，但它事实上没有被删除。下面是AUFS中删除文件的示意图\(图片来自Docker官网\)：
 
-
-
 可以看到，file3文件被删除了，所以Docker在最顶层生成一个whiteout文件来屏蔽该文件在只读层的存在。  
 **Note:**从该图中还可以看到另一个事实，如果AUFS的不同分支的相同位置有同名文件，则高层的文件覆盖下面低层文件的存在\(图中file4\)。
 
@@ -101,8 +99,7 @@ $ docker daemon --storage-driver=aufs
 或者在/etc/default/docker文件中加入：
 
 ```
-DOCKER_OPTS=
-"--storage-driver=aufs"
+DOCKER_OPTS="--storage-driver=aufs"
 ```
 
 **AUFS下的本地存储**  
@@ -114,7 +111,7 @@ DOCKER_OPTS=
   \`bash  
   IMAGE CREATED CREATED BY SIZE COMMENT  
   e9ae3c220b23 2 weeks ago /bin/sh -c \#\(nop\) CMD \["/bin/bash"\] 0 B  
-  a6785352b25c 2 weeks ago /bin/sh -c sed -i 's/^\#\s_\(deb._universe\)$/ 1.895 kB  
+  a6785352b25c 2 weeks ago /bin/sh -c sed -i 's/^\#\s\_\(deb.\_universe\)$/ 1.895 kB  
   0998bf8fb9e9 2 weeks ago /bin/sh -c echo '\#!/bin/sh' &gt; /usr/sbin/polic 194.5 kB  
   0a85502c06c9 2 weeks ago /bin/sh -c \#\(nop\) ADD file:531ac3e55db4293b8f 187.7 MB  
   \`  
@@ -223,109 +220,23 @@ OverlayFS仅有两层，也就是说镜像中的每一层并不对应OverlayFS�
 执行`docker images -a`查看ubuntu镜像都由哪些层组成：
 
 ```
-$ docker images 
--a
-
+$ docker images -a
 REPOSITORY          TAG                 IMAGE ID            CREATED             VIRTUAL SIZE
-ubuntu              latest              
-1
-d073211c498        
-7
- days ago          
-187.9
- MB
-
-<
-none
->
-<
-none
->
-5
-a4526e952f0        
-7
- days ago          
-187.9
- MB
-
-<
-none
->
-<
-none
->
-99
-fcaefe76ef        
-7
- days ago          
-187.9
- MB
-
-<
-none
->
-<
-none
->
-              c63fb41c2213        
-7
- days ago          
-187.7
- MB
+ubuntu              latest              1d073211c498        7 days ago          187.9 MB
+<none>              <none>              5a4526e952f0        7 days ago          187.9 MB
+<none>              <none>              99fcaefe76ef        7 days ago          187.9 MB
+<none>              <none>              c63fb41c2213        7 days ago          187.7 MB
 ```
 
 然后查看`/var/lib/docker/overlay`下的文件夹：
 
 ```
-$ ls 
--l
- /var/lib/docker/overlay/
-total 
-24
-
-drwx------ 
-3
- root root 
-4096
- Oct 
-28
-11
-:
-02
-1
-d073211c498fd5022699b46a936b4e4bdacb04f637ad64d3475f558783f5c3e
-drwx------ 
-3
- root root 
-4096
- Oct 
-28
-11
-:
-02
-5
-a4526e952f0aa24f3fcc1b6971f7744eb5465d572a48d47c492cb6bbf9cbcda
-drwx------ 
-5
- root root 
-4096
- Oct 
-28
-11
-:
-06
-99
-fcaefe76ef1aa4077b90a413af57fd17d19dce4e50d7964a273aae67055235
-drwx------ 
-3
- root root 
-4096
- Oct 
-28
-11
-:
-01
- c63fb41c2213f511f12f294dd729b9903a64d88f098c20d2350905ac1fdbcbba
+$ ls -l /var/lib/docker/overlay/
+total 24
+drwx------ 3 root root 4096 Oct 28 11:02 1d073211c498fd5022699b46a936b4e4bdacb04f637ad64d3475f558783f5c3e
+drwx------ 3 root root 4096 Oct 28 11:02 5a4526e952f0aa24f3fcc1b6971f7744eb5465d572a48d47c492cb6bbf9cbcda
+drwx------ 5 root root 4096 Oct 28 11:06 99fcaefe76ef1aa4077b90a413af57fd17d19dce4e50d7964a273aae67055235
+drwx------ 3 root root 4096 Oct 28 11:01 c63fb41c2213f511f12f294dd729b9903a64d88f098c20d2350905ac1fdbcbba
 ```
 
 可以看出，镜像中的每一层在`/var/lib/docker/overlay`文件夹下都有一个文件夹和它对应，文件夹以镜像层的UUID命名。文件夹存储了本层独有的文件和指向它下面各层文件的硬连接。
