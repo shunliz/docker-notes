@@ -246,67 +246,18 @@ drwx------ 3 root root 4096 Oct 28 11:01 c63fb41c2213f511f12f294dd729b9903a64d88
 ```
 $ docker ps
 CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
-
-73
-de7176c223        ubuntu              
-"bash"
-2
- days ago          Up 
-2
- days                               stupefied_nobel
+73de7176c223        ubuntu              "bash"              2 days ago          Up 2 days                               stupefied_nobel
 ```
 
 这个容器的数据存储在`/var/lib/docker/overlay/73de7176c223...`文件夹下，文件夹以容器的ID命名。执行`ls -a`命令查看具体文件：
 
 ```
-$ ls 
--l
- /var/lib/docker/overlay/
-73
-de7176c223a6c82fd46c48c5f152f2c8a7e49ecb795a7197c3bb795c4d879e
-total 
-16
-
--rw-r--r-- 
-1
- root root   
-64
- Oct 
-28
-11
-:
-06
- lower-id
-drwxr-xr-x 
-1
- root root 
-4096
- Oct 
-28
-11
-:
-06
- merged
-drwxr-xr-x 
-4
- root root 
-4096
- Oct 
-28
-11
-:
-06
- upper
-drwx------ 
-3
- root root 
-4096
- Oct 
-28
-11
-:
-06
- work
+$ ls -l /var/lib/docker/overlay/73de7176c223a6c82fd46c48c5f152f2c8a7e49ecb795a7197c3bb795c4d879e
+total 16
+-rw-r--r-- 1 root root   64 Oct 28 11:06 lower-id
+drwxr-xr-x 1 root root 4096 Oct 28 11:06 merged
+drwxr-xr-x 4 root root 4096 Oct 28 11:06 upper
+drwx------ 3 root root 4096 Oct 28 11:06 work
 ```
 
 这就是OverlayFS的核心内容了。`lower-id`文件保存了当前容器依赖镜像的最上层的UUID，并将其作为`lowerdir`；`upper`文件夹就是容器的读写层`read-write layer`，对容器的所有修改都保存在这个文件夹里；`merged`文件夹就是容器文件系统的挂载点，容器通过它提供统一的视角。对容器的任何修改都会立即在这个文件夹里得到反应；`work`文件夹需要OverlayFS来发挥作用，它用来支持像`copy-up`这样的操作。
