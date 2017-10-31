@@ -15,4 +15,5 @@
   * [guestbook-demo](kubernetes/guestbook-demo.md)
   * [弹性伸缩与滚动升级](kubernetes/dan-xing-shen-suo-yu-gun-dong-sheng-ji.md)
   * [kubernetes 开发](kubernetes/kubernetes-kai-fa.md)
+  * [kubernetes架构理解](kubernetes/kubernetesjia-gou-li-jie.md)
 
