@@ -263,7 +263,7 @@ etcd有三种集群化启动的配置方案，分别为静态配置启动、etcd
 
 在每个etcd机器启动时，配置环境变量或者添加启动参数的方式如下。
 
-| 123 | ETCD\_INITIAL\_CLUSTER="infra0=[http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"ETCD\_INITIAL\_CLUSTER\_STATE=new](http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"ETCD_INITIAL_CLUSTER_STATE=new) |
+| 123 | ETCD\_INITIAL\_CLUSTER="infra0=\[[http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"ETCD\_INITIAL\_CLUSTER\_STATE=new\]\(http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"ETCD\_INITIAL\_CLUSTER\_STATE=new](http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"ETCD_INITIAL_CLUSTER_STATE=new]%28http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"ETCD_INITIAL_CLUSTER_STATE=new)\) |
 | :--- | :--- |
 
 
@@ -645,7 +645,7 @@ etcd从v0.4.6升级到v2.0.0，它数据格式存储的格式也变化了。检�
 
 * 删除目录：默认情况下只允许删除空目录，如果要删除有内容的目录需要加上`recursive=true`参数。
 
-  | 12 | curl'[http://127.0.0.1:2379/v2/keys/foo\_dir?dir=true'-XDELETE](http://127.0.0.1:2379/v2/keys/foo_dir?dir=true'-XDELETE) |
+  | 12 | curl'\[[http://127.0.0.1:2379/v2/keys/foo\_dir?dir=true'-XDELETE\]\(http://127.0.0.1:2379/v2/keys/foo\_dir?dir=true'-XDELETE](http://127.0.0.1:2379/v2/keys/foo_dir?dir=true'-XDELETE]%28http://127.0.0.1:2379/v2/keys/foo_dir?dir=true'-XDELETE)\) |
   | :--- | :--- |
 
 * 创建一个隐藏节点：命名时名字以下划线`_`开头默认就是隐藏键。
