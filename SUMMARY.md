@@ -17,5 +17,7 @@
   * [kubernetes 开发](kubernetes/kubernetes-kai-fa.md)
   * [kubernetes架构理解](kubernetes/kubernetesjia-gou-li-jie.md)
   * [Kubernetes RBAC](kubernetes/kubernetes-rbac.md)
-  * [Etcd简介](kubernetes/etcdjian-jie.md)
+* NoSQL
+  * [zookeeper典型应用场景一览](zookeeperdian-xing-ying-yong-chang-jing-yi-lan.md)
+* [Etcd简介](kubernetes/etcdjian-jie.md)
 
