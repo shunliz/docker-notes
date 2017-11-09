@@ -19,5 +19,5 @@
   * [Kubernetes RBAC](kubernetes/kubernetes-rbac.md)
 * NoSQL
   * [zookeeper典型应用场景一览](zookeeperdian-xing-ying-yong-chang-jing-yi-lan.md)
-* [Etcd简介](kubernetes/etcdjian-jie.md)
+  * [Etcd简介](kubernetes/etcdjian-jie.md)
 
