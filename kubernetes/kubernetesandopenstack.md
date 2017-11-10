@@ -1,0 +1,2 @@
+![](/assets/kubernetes-openstack.png)
+
