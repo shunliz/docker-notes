@@ -29,3 +29,25 @@ flannel 为每个主机分配了独立的 subnet，但 flannel.1 将这些 subne
 
 
 
+下面对 host-gw 和 vxlan 这两种 backend 做个简单比较。
+
+1. host-gw 把每个主机都配置成网关，主机知道其他主机的 subnet 和转发地址。vxlan 则在主机间建立隧道，不同主机的容器都在一个大的网段内（比如 10.2.0.0/16）。
+
+2. 虽然 vxlan 与 host-gw 使用不同的机制建立主机之间连接，但对于容器则无需任何改变，bbox1 仍然可以与 bbox2 通信。
+
+3. 由于 vxlan 需要对数据进行额外打包和拆包，性能会稍逊于 host-gw。
+
+
+
+## **weave**
+
+![](/assets/docker-wave.png)weave 网络包含两个虚拟交换机：Linux bridge weave 和 Open vSwitch datapath，veth pair vethwe-bridge 和 vethwe-datapath 将二者连接在一起。weave 和 datapath 分工不同，weave 负责将容器接入 weave 网络，datapath 负责在主机间 VxLAN 隧道中并收发数据
+
+
+
+![](/assets/docker-wave2.png)
+
+## 
+
+
+
