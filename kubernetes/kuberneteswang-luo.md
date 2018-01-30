@@ -34,7 +34,6 @@ Kube-proxy是一个简单的网络代理和负载均衡器，它的作用主要�
 
 * userspace是在用户空间，通过kuber-proxy实现LB的代理服务，这个是kube-proxy的最初的版本，较为稳定，但是效率也自然不太高。
 
-* 
 * iptables是纯采用iptables来实现LB，是目前kube-proxy默认的方式。
 
 **下面是iptables模式下Kube-proxy的实现方式：**
