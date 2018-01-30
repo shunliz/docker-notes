@@ -34,6 +34,7 @@ Kube-proxy是一个简单的网络代理和负载均衡器，它的作用主要�
 
 * userspace是在用户空间，通过kuber-proxy实现LB的代理服务，这个是kube-proxy的最初的版本，较为稳定，但是效率也自然不太高。
 
+* 
 * iptables是纯采用iptables来实现LB，是目前kube-proxy默认的方式。
 
 **下面是iptables模式下Kube-proxy的实现方式：**
@@ -141,8 +142,6 @@ Flannel之所以可以搭建kubernets依赖的底层网络，是因为它可以�
 **性能对比总结：**
 
 CalicoBGP 方案最好，不能用 BGP 也可以考虑 Calico ipip tunnel 方案；如果是 Coreos 系又能开 udp offload，flannel 是不错的选择；Docker 原生Overlay还有很多需要改进的地方。
-
-
 
 ![](/assets/kubnetcmp.png)
 
