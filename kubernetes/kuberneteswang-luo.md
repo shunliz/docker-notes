@@ -142,5 +142,7 @@ Flannel之所以可以搭建kubernets依赖的底层网络，是因为它可以�
 
 CalicoBGP 方案最好，不能用 BGP 也可以考虑 Calico ipip tunnel 方案；如果是 Coreos 系又能开 udp offload，flannel 是不错的选择；Docker 原生Overlay还有很多需要改进的地方。
 
+
+
 ![](/assets/kubnetcmp.png)
 
