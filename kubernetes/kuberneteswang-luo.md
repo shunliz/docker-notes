@@ -55,6 +55,7 @@ Kube-dns用来为kubernetes service分配子域名，在集群中可以通过名
 
 * 在Kubernetes v1.4版本之前由“Kube2sky、Etcd、Skydns、Exechealthz”四个组件组成。
 
+* 
 * 在Kubernetes v1.4版本及之后由“Kubedns、dnsmasq、exechealthz”三个组件组成。
 
 ![](/assets/kubdns1.png)
