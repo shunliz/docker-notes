@@ -12,6 +12,8 @@
 
 
 
+
+
 [Kubernetes API Server](https://kubernetes.io/docs/admin/kube-apiserver/)是整个[Kubernetes集群](http://tonybai.com/2016/10/18/learn-how-to-install-kubernetes-on-ubuntu/)的核心，我们不仅有从集群外部访问API Server的需求，有时，我们还需要从Pod的内部访问API Server。
 
 然而，在生产环境中，Kubernetes API Server都是“设防”的。在《[Kubernetes集群的安全配置](http://tonybai.com/2016/11/25/the-security-settings-for-kubernetes-cluster/)》一文中，我提到过：Kubernetes通过client cert、static token、basic auth等方法对客户端请求进行[身份验证](https://kubernetes.io/docs/admin/authentication/#authentication-strategies)。对于运行于Pod中的Process而言，有些时候这些方法是适合的，但有些时候，像client cert、static token或basic auth这些信息是不便于暴露给Pod中的Process的。并且通过这些方法通过API Server验证后的请求是具有全部授权的，可以任意操作[Kubernetes cluster](http://tonybai.com/2017/01/24/explore-kubernetes-cluster-installed-by-kubeadm/)，这显然是不能满足安全要求的。为此，Kubernetes更推荐大家使用[service account](https://kubernetes.io/docs/user-guide/service-accounts/)这种方案的。本文就带大家详细说说如何通过service account从一个Pod中访问API Server的。
