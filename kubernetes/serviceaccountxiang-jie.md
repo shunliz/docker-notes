@@ -1,3 +1,17 @@
+整个流程梳理：
+
+1，用户通过kubectl创建serviceaccount, 请求会发到controller manager， controller manager启动参数中配置的--service-account-private-key-file 对serviceaccount对应的用户（这里其实是虚拟用户，可能是CN或者一个随机数）进行签名生成serviceaccount对应的secret里边的token。多master的情况下，需要使用server的key，client的key在各个节点不一致。
+
+2，用户创建pod，指定serviceaccount,对应的信息ca.crt, namespace,token这些信息会挂载到pod的/var/run/secrets/kubernetes.io/serviceaccount下。
+
+3， pod中的应用访问k8s api， 这些pod应用通常是使用go-client访问k8s api的， 使用incluster方式初始化client，也就是会去/var/run/secrets/kubernetes.io/serviceaccount寻找token，发送到apiserver，请求访问api。
+
+4， apiserver对token进行验证，由于加密使用的是server.key，是私钥，所以apiserver启动参数--service-account-key-file需要配置成server的公钥，也就是server.crt。
+
+这样整个身份认证过程完成。
+
+
+
 [Kubernetes API Server](https://kubernetes.io/docs/admin/kube-apiserver/)是整个[Kubernetes集群](http://tonybai.com/2016/10/18/learn-how-to-install-kubernetes-on-ubuntu/)的核心，我们不仅有从集群外部访问API Server的需求，有时，我们还需要从Pod的内部访问API Server。
 
 然而，在生产环境中，Kubernetes API Server都是“设防”的。在《[Kubernetes集群的安全配置](http://tonybai.com/2016/11/25/the-security-settings-for-kubernetes-cluster/)》一文中，我提到过：Kubernetes通过client cert、static token、basic auth等方法对客户端请求进行[身份验证](https://kubernetes.io/docs/admin/authentication/#authentication-strategies)。对于运行于Pod中的Process而言，有些时候这些方法是适合的，但有些时候，像client cert、static token或basic auth这些信息是不便于暴露给Pod中的Process的。并且通过这些方法通过API Server验证后的请求是具有全部授权的，可以任意操作[Kubernetes cluster](http://tonybai.com/2017/01/24/explore-kubernetes-cluster-installed-by-kubeadm/)，这显然是不能满足安全要求的。为此，Kubernetes更推荐大家使用[service account](https://kubernetes.io/docs/user-guide/service-accounts/)这种方案的。本文就带大家详细说说如何通过service account从一个Pod中访问API Server的。
@@ -336,8 +350,6 @@ There are 14 pods in the cluster
 
 上边对serviceaccount的使用场景，如何工作，客户端的使用方式等讲的比较清楚了。没有提到的就是serviceaccount token是如何验证的。可以看参考资料最后一个，k8s文档讲的也很清楚了。
 
-
-
 # 管理服务帐号（Service Accounts）
 
 ## 用户账号 vs 服务账号 {#用户账号-vs-服务账号}
@@ -402,14 +414,12 @@ secret.json:
 ```
 kubectl create  -f ./secret.json
 kubectl describe secret mysecretname
-
 ```
 
 #### 删除/作废服务账号令牌 {#删除作废服务账号令牌}
 
 ```
 kubectl delete secret mysecretname
-
 ```
 
 ### 服务账号控制器 {#服务账号控制器}
