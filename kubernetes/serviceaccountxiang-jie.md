@@ -17,7 +17,6 @@ service account作为一种resource存在于Kubernetes cluster中，我们可以
 NAMESPACE                    NAME           SECRETS   AGE
 default                      default        1         140d
 kube-system                  default        1         140d
-
 ```
 
 我们查看一下kube-system namespace下名为”default”的service account的详细信息：
@@ -41,7 +40,6 @@ none
 Mountable secrets:     default-token-hpni0
 
 Tokens:                default-token-hpni0
-
 ```
 
 我们看到service account并不复杂，只是关联了一个secret资源作为token，该token也叫service-account-token，该token才是真正在API Server验证\(authentication\)环节起作用的：
@@ -70,8 +68,6 @@ metadata:
   selfLink: /api/v1/namespaces/kube-system/secrets/default-token-hpni0
   uid: 90e71909-9120-11e6-a0a6-00163e1625a9
 type: kubernetes.io/service-account-token
-
-
 ```
 
 我们看到这个类型为service-account-token的secret资源包含的数据有三部分：ca.crt、namespace和token。
@@ -92,19 +88,17 @@ type: kubernetes.io/service-account-token
 
 ```
 system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT)
-
 ```
 
 以上面那个kube-system namespace下的“default” service account为例，使用它的Pod的username全称为：
 
 ```
 system:serviceaccount:kube-system:default
-
 ```
 
 有了username，那么credentials呢？就是上面提到的service-account-token中的token。在《[Kubernetes集群的安全配置](http://tonybai.com/2016/11/25/the-security-settings-for-kubernetes-cluster/)》一文中我们谈到过，API Server的authenticating环节支持多种身份校验方式：client cert、bearer token、static password auth等，这些方式中有一种方式通过authenticating（Kubernetes API Server会逐个方式尝试），那么身份校验就会通过。一旦API Server发现client发起的request使用的是service account token的方式，API Server就会自动采用signed bearer token方式进行身份校验。而request就会使用携带的service account token参与验证。该token是API Server在创建service account时用API server启动参数：–service-account-key-file的值签署\(sign\)生成的。如果–service-account-key-file未传入任何值，那么将默认使用–tls-private-key-file的值，即API Server的私钥（server.key）。
 
-通过authenticating后，API Server将根据Pod username所在的group：system:serviceaccounts和system:serviceaccounts:\(NAMESPACE\)的权限对其进行[authority](https://kubernetes.io/docs/admin/authorization/) 和[admission control](https://kubernetes.io/docs/admin/admission-controllers/)两个环节的处理。在这两个环节中，cluster管理员可以对service account的权限进行细化设置。
+通过authenticating后，API Server将根据Pod username所在的group：system:serviceaccounts和system:serviceaccounts:\(NAMESPACE\)的权限对其进行[authority](https://kubernetes.io/docs/admin/authorization/) 和[admission control](https://kubernetes.io/docs/admin/admission-controllers/)两个环节的处理。在这两个环节中，cluster管理员可以对service account的权限进行细化设置。
 
 ### 三、默认的service account
 
@@ -115,7 +109,6 @@ Kubernetes会为每个cluster中的namespace自动创建一个默认的service a
 NAMESPACE                    NAME           SECRETS   AGE
 default                      default        1         140d
 kube-system                  default        1         140d
-
 ```
 
 如果Pod中没有显式指定spec.serviceAccount字段值，那么Kubernetes会将该namespace下的”default” service account自动mount到在这个namespace中创建的Pod里。我们以namespace “default”为例，我们查看一下其中的一个Pod的信息：
@@ -150,7 +143,6 @@ none
 >
 
 No events.
-
 ```
 
 可以看到，kubernetes将default namespace中的service account “default”的service account token挂载\(mount\)到了Pod中容器的/var/run/secrets/kubernetes.io/serviceaccount路径下。
@@ -162,7 +154,6 @@ No events.
 ca.crt
 namespace
 token
-
 ```
 
 这三个文件与上面提到的service account的token中的数据是一一对应的。
@@ -179,7 +170,6 @@ token
 # ls -F
 CHANGELOG.md  dynamic/   Godeps/     INSTALL.md   LICENSE   OWNERS  plugin/    rest/     third_party/  transport/  vendor/
 discovery/    examples/  informers/  kubernetes/  listers/  pkg/    README.md  testing/  tools/        util/
-
 ```
 
 我们改造一下examples/in-cluster/main.go，考虑到panic会导致不便于观察Pod日志，我们将panic改为输出到“标准输出”，并且不return，让Pod周期性的输出相关日志，即便fail：
@@ -208,8 +198,6 @@ func main() {
         time.Sleep(10 * time.Second)
     }
 }
-
-
 ```
 
 基于该main.go的go build默认输出，创建一个简单的Dockerfile：
@@ -226,8 +214,6 @@ COPY main /root/main
 RUN chmod +x /root/main
 WORKDIR /root
 ENTRYPOINT ["/root/main"]
-
-
 ```
 
 构建一个测试用docker image：
@@ -238,8 +224,6 @@ ENTRYPOINT ["/root/main"]
 
 # docker images|grep k8s
 k8s/example1                                                  latest              ceb3efdb2f91        14 hours ago        264.4 MB
-
-
 ```
 
 创建一份deployment manifest：
@@ -262,7 +246,6 @@ spec:
       - name: k8s-example1
         image: k8s/example1:latest
         imagePullPolicy: IfNotPresent
-
 ```
 
 我们来创建该deployment（kubectl create -f main.yaml -n kube-system），观察Pod中的main程序能否成功访问到API Server：
@@ -277,7 +260,6 @@ API Server log(/var/log/upstart/kube-apiserver.log):
 E0302 15:45:40.944496   12902 handlers.go:54] Unable to authenticate the request due to an error: crypto/rsa: verification error
 E0302 15:45:50.946598   12902 handlers.go:54] Unable to authenticate the request due to an error: crypto/rsa: verification error
 E0302 15:46:00.948398   12902 handlers.go:54] Unable to authenticate the request due to an error: crypto/rsa: verification error
-
 ```
 
 出错了！kube-system namespace下的”default” service account似乎不好用啊！（注意：这是在kubernetes 1.3.7环境）。
@@ -294,7 +276,6 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: k8s-example1
-
 ```
 
 创建该service account：
@@ -307,7 +288,6 @@ serviceaccount "k8s-example1" created
 NAME           SECRETS   AGE
 default        1         139d
 k8s-example1   1         12s
-
 ```
 
 修改main.yaml，让Pod显示使用这个新的service account：
@@ -330,7 +310,6 @@ spec:
       - name: k8s-example1
         image: k8s/example1:latest
         imagePullPolicy: IfNotPresent
-
 ```
 
 好了，我们重新创建该deployment，查看Pod日志：
@@ -340,7 +319,6 @@ spec:
 There are 14 pods in the cluster
 There are 14 pods in the cluster
 ... ...
-
 ```
 
 我们看到main程序使用新的service account成功通过了API Server的身份验证环节，并获得了cluster的相关信息。
