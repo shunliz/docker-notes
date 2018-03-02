@@ -336,3 +336,11 @@ There are 14 pods in the cluster
 
 
 
+上边对serviceaccount的使用场景，如何工作，客户端的使用方式等讲的比较清楚了。没有提到的就是serviceaccount token是如何验证的。可以看参考资料最后一个，k8s文档讲的也很清楚了。
+
+
+
+
+
+
+
