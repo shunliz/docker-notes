@@ -107,6 +107,8 @@ rules:
 
 RoleBinding把Role绑定到账户主体Subject，让Subject继承Role所在namespace下的权限。ClusterRoleBinding把ClusterRole绑定到Subject，让Subject集成ClusterRole在整个集群中的权限。
 
+
+
 账户主体Subject在这里还是叫“用户”吧，包含组group，用户user和ServiceAccount。
 
 ```
